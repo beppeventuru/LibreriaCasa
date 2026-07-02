@@ -492,6 +492,95 @@ function loadScannerLibrary() {
   return scannerLibraryPromise;
 }
 
+function waitForScannerVideo(video) {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => finish(new Error("video-timeout")), 4000);
+
+    function finish(error) {
+      window.clearTimeout(timeout);
+      video.removeEventListener("loadeddata", handleLoaded);
+      video.removeEventListener("error", handleError);
+      if (error) reject(error);
+      else resolve();
+    }
+
+    function handleLoaded() {
+      finish();
+    }
+
+    function handleError() {
+      finish(new Error("video-error"));
+    }
+
+    video.addEventListener("loadeddata", handleLoaded, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+  });
+}
+
+async function createNativeBarcodeControls(video, onResult) {
+  const NativeBarcodeDetector = window.BarcodeDetector;
+  if (typeof NativeBarcodeDetector !== "function") return null;
+
+  try {
+    if (typeof NativeBarcodeDetector.getSupportedFormats === "function") {
+      const supportedFormats = await NativeBarcodeDetector.getSupportedFormats();
+      if (!supportedFormats.includes("ean_13")) return null;
+    }
+
+    const detector = new NativeBarcodeDetector({ formats: ["ean_13"] });
+    await waitForScannerVideo(video);
+    await video.play();
+
+    let stopped = false;
+    let timer = 0;
+    let videoFrameRequest = 0;
+
+    const processDetections = (detections) => {
+      detections.forEach((detection) => {
+        if (detection.rawValue) onResult(detection.rawValue);
+      });
+    };
+
+    // La prima lettura conferma che il browser accetti davvero il flusso video.
+    processDetections(await detector.detect(video));
+
+    const scheduleNextFrame = () => {
+      if (stopped) return;
+      if (typeof video.requestVideoFrameCallback === "function") {
+        videoFrameRequest = video.requestVideoFrameCallback(scanFrame);
+      } else {
+        timer = window.setTimeout(scanFrame, 140);
+      }
+    };
+
+    const scanFrame = async () => {
+      if (stopped) return;
+      try {
+        processDetections(await detector.detect(video));
+      } catch {
+        // Un singolo fotogramma non leggibile non deve interrompere la scansione.
+      }
+      scheduleNextFrame();
+    };
+
+    scheduleNextFrame();
+
+    return {
+      stop() {
+        stopped = true;
+        window.clearTimeout(timer);
+        if (videoFrameRequest && typeof video.cancelVideoFrameCallback === "function") {
+          video.cancelVideoFrameCallback(videoFrameRequest);
+        }
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
 function addScannedIsbn(rawValue) {
   const isbn = cleanIsbn(rawValue);
   const now = Date.now();
@@ -636,15 +725,6 @@ async function startBarcodeScanner() {
   let stream = null;
 
   try {
-    const ZXingBrowser = await loadScannerLibrary();
-    if (session !== scannerSession || !bulkDialog.open) return;
-    if (
-      !ZXingBrowser?.BrowserMultiFormatOneDReader
-      && !ZXingBrowser?.BrowserMultiFormatReader
-    ) {
-      throw new Error("Scanner non disponibile.");
-    }
-
     stream = await getRearCameraStream();
     if (session !== scannerSession || !bulkDialog.open) {
       stream.getTracks().forEach((track) => track.stop());
@@ -655,23 +735,44 @@ async function startBarcodeScanner() {
     focusScannerButton.disabled = !scannerTrack;
     await enableContinuousFocus().catch(() => false);
 
-    const Reader = ZXingBrowser.BrowserMultiFormatOneDReader
-      || ZXingBrowser.BrowserMultiFormatReader;
-    const reader = new Reader();
-    const controls = await reader.decodeFromStream(
-      stream,
-      barcodeVideo,
-      (result) => {
-        if (result && session === scannerSession) addScannedIsbn(result.getText());
+    let controls = await createNativeBarcodeControls(barcodeVideo, (rawValue) => {
+      if (session === scannerSession) addScannedIsbn(rawValue);
+    });
+    const usingNativeDetector = Boolean(controls);
+
+    if (!controls) {
+      const ZXingBrowser = await loadScannerLibrary();
+      if (session !== scannerSession || !bulkDialog.open) return;
+      if (
+        !ZXingBrowser?.BrowserMultiFormatOneDReader
+        && !ZXingBrowser?.BrowserMultiFormatReader
+      ) {
+        throw new Error("Scanner non disponibile.");
       }
-    );
+
+      const Reader = ZXingBrowser.BrowserMultiFormatOneDReader
+        || ZXingBrowser.BrowserMultiFormatReader;
+      const reader = new Reader();
+      controls = await reader.decodeFromStream(
+        stream,
+        barcodeVideo,
+        (result) => {
+          if (result && session === scannerSession) addScannedIsbn(result.getText());
+        }
+      );
+    }
+
     if (session !== scannerSession || !bulkDialog.open) {
       controls.stop();
       return;
     }
     scannerControls = controls;
     startScannerButton.textContent = "Fotocamera attiva";
-    setScannerStatus("Fotocamera pronta: l’ISBN verrà aggiunto appena riconosciuto.");
+    setScannerStatus(
+      usingNativeDetector
+        ? "Lettore Android attivo: inquadra l’ISBN."
+        : "Fotocamera pronta: l’ISBN verrà aggiunto appena riconosciuto."
+    );
   } catch (error) {
     if (stream && barcodeVideo.srcObject !== stream) {
       stream.getTracks().forEach((track) => track.stop());
