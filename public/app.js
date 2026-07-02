@@ -512,7 +512,8 @@ function addScannedIsbn(rawValue) {
   const currentValue = bulkIsbnInput.value.trimEnd();
   bulkIsbnInput.value = `${currentValue}${currentValue ? "\n" : ""}${isbn}\n`;
   updateBulkEntryCount();
-  setScannerStatus(`ISBN ${isbn} aggiunto. Inquadra il prossimo libro.`, "success");
+  bulkIsbnInput.scrollTop = bulkIsbnInput.scrollHeight;
+  setScannerStatus(`Acquisito: ${isbn} · ${bulkEntryCount.textContent}.`, "success");
   if (navigator.vibrate) navigator.vibrate(80);
 }
 
@@ -594,7 +595,8 @@ function stopBarcodeScanner({ hide = true } = {}) {
   scannerSession += 1;
   releaseScannerCamera();
   startScannerButton.disabled = bulkRunning;
-  startScannerButton.textContent = "Scansiona con fotocamera";
+  startScannerButton.hidden = false;
+  startScannerButton.textContent = "Avvia fotocamera";
   if (hide) {
     barcodeScanner.hidden = true;
     setScannerStatus("Inquadra il codice a barre sul retro del libro.");
@@ -625,6 +627,7 @@ async function startBarcodeScanner() {
 
   barcodeScanner.hidden = false;
   startScannerButton.disabled = true;
+  startScannerButton.hidden = true;
   startScannerButton.textContent = "Avvio fotocamera…";
   setScannerStatus("Sto preparando la fotocamera…");
   lastScannedCode = "";
@@ -676,13 +679,10 @@ async function startBarcodeScanner() {
     releaseScannerCamera();
     if (session !== scannerSession) return;
     startScannerButton.disabled = false;
+    startScannerButton.hidden = false;
     startScannerButton.textContent = "Riprova fotocamera";
     setScannerStatus(scannerErrorMessage(error), "error");
   }
-}
-
-function shouldAutoStartScanner() {
-  return window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0;
 }
 
 function openBulkDialog() {
@@ -694,9 +694,7 @@ function openBulkDialog() {
   startBulkButton.textContent = "Importa libri";
   updateBulkEntryCount();
   bulkDialog.showModal();
-  if (shouldAutoStartScanner()) {
-    startBarcodeScanner();
-  } else {
+  if (!window.matchMedia("(pointer: coarse)").matches) {
     bulkIsbnInput.focus();
   }
 }

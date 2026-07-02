@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260702-camera2">
+  <link rel="stylesheet" href="styles.css?v=20260702-compactscan1">
 </head>
 <body>
   <header class="topbar">
@@ -165,11 +165,7 @@
 
     <div class="bulk-dialog-scroll">
       <div class="bulk-entry-heading">
-        <div>
-          <p class="bulk-input-label">Come vuoi inserire gli ISBN?</p>
-          <p class="bulk-help">Puoi usare la fotocamera, la pistola scanner oppure incollare un elenco.</p>
-        </div>
-        <button class="scanner-start-button" id="startScannerButton" type="button">Scansiona con fotocamera</button>
+        <button class="scanner-start-button" id="startScannerButton" type="button">Avvia fotocamera</button>
       </div>
 
       <section id="barcodeScanner" class="barcode-scanner" aria-label="Scanner di codici a barre" hidden>
@@ -181,8 +177,6 @@
           <p id="scannerStatus" class="scanner-status" role="status" aria-live="polite">
             Inquadra il codice a barre sul retro del libro.
           </p>
-          <p>Ogni ISBN riconosciuto viene aggiunto automaticamente all’elenco.</p>
-          <p class="scanner-distance-tip">Tieni il telefono a circa 15–25 cm e porta il codice dentro il riquadro arancione.</p>
           <div class="scanner-camera-actions">
             <button class="secondary" id="focusScannerButton" type="button" disabled>Metti a fuoco</button>
             <button class="secondary" id="stopScannerButton" type="button">Termina scansione</button>
@@ -194,8 +188,7 @@
         <label class="bulk-input-label" for="bulkIsbnInput">ISBN, uno per riga</label>
         <span id="bulkEntryCount" class="bulk-entry-count">0 codici</span>
       </div>
-      <textarea id="bulkIsbnInput" rows="8" placeholder="9780194227230&#10;9788806225315&#10;…"></textarea>
-      <p class="bulk-help">Con la pistola scanner lascia attivo l’invio automatico dopo ogni lettura. Trattini e spazi vengono rimossi automaticamente.</p>
+      <textarea id="bulkIsbnInput" rows="5" placeholder="9780194227230&#10;9788806225315&#10;…"></textarea>
 
       <div id="bulkProgress" class="bulk-progress" role="status" aria-live="polite"></div>
       <ol id="bulkResults" class="bulk-results"></ol>
@@ -262,6 +255,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260702-camera2"></script>
+  <script type="module" src="app.js?v=20260702-compactscan1"></script>
 </body>
 </html>
