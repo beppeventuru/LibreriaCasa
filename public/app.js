@@ -35,6 +35,7 @@ const closeBulkButton = document.querySelector("#closeBulkButton");
 const cancelBulkButton = document.querySelector("#cancelBulkButton");
 const startScannerButton = document.querySelector("#startScannerButton");
 const stopScannerButton = document.querySelector("#stopScannerButton");
+const focusScannerButton = document.querySelector("#focusScannerButton");
 const barcodeScanner = document.querySelector("#barcodeScanner");
 const barcodeVideo = document.querySelector("#barcodeVideo");
 const scannerStatus = document.querySelector("#scannerStatus");
@@ -61,6 +62,7 @@ let books = [];
 let searchTimer;
 let bulkRunning = false;
 let scannerControls = null;
+let scannerTrack = null;
 let scannerLibraryPromise = null;
 let scannerSession = 0;
 let lastScannedCode = "";
@@ -522,6 +524,70 @@ function releaseScannerCamera() {
   const stream = barcodeVideo.srcObject;
   if (stream) stream.getTracks().forEach((track) => track.stop());
   barcodeVideo.srcObject = null;
+  scannerTrack = null;
+  focusScannerButton.disabled = true;
+}
+
+async function getRearCameraStream() {
+  const preferredVideo = {
+    facingMode: { exact: "environment" },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { ideal: 30 }
+  };
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: false, video: preferredVideo });
+  } catch (error) {
+    if (error?.name !== "OverconstrainedError" && error?.name !== "NotFoundError") throw error;
+    return navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
+      }
+    });
+  }
+}
+
+function scannerFocusModes() {
+  try {
+    return scannerTrack?.getCapabilities?.().focusMode || [];
+  } catch {
+    return [];
+  }
+}
+
+async function enableContinuousFocus() {
+  if (!scannerTrack) return false;
+  const focusModes = scannerFocusModes();
+  if (!focusModes.includes("continuous")) return false;
+  await scannerTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+  return true;
+}
+
+async function refocusScannerCamera() {
+  if (!scannerTrack) return;
+  focusScannerButton.disabled = true;
+  setScannerStatus("Regolo la messa a fuoco…");
+
+  try {
+    const focusModes = scannerFocusModes();
+    if (focusModes.includes("single-shot")) {
+      await scannerTrack.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
+    } else if (focusModes.includes("continuous")) {
+      await scannerTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+    } else {
+      throw new Error("focus-not-supported");
+    }
+    setScannerStatus("Messa a fuoco aggiornata. Inquadra il codice nel riquadro.");
+  } catch {
+    setScannerStatus("Allontana leggermente il telefono e tienilo fermo sul codice.", "duplicate");
+  } finally {
+    focusScannerButton.disabled = false;
+  }
 }
 
 function stopBarcodeScanner({ hide = true } = {}) {
@@ -564,24 +630,33 @@ async function startBarcodeScanner() {
   lastScannedCode = "";
   lastScanTime = 0;
   const session = ++scannerSession;
+  let stream = null;
 
   try {
     const ZXingBrowser = await loadScannerLibrary();
     if (session !== scannerSession || !bulkDialog.open) return;
-    if (!ZXingBrowser?.BrowserMultiFormatReader) {
+    if (
+      !ZXingBrowser?.BrowserMultiFormatOneDReader
+      && !ZXingBrowser?.BrowserMultiFormatReader
+    ) {
       throw new Error("Scanner non disponibile.");
     }
 
-    const reader = new ZXingBrowser.BrowserMultiFormatReader();
-    const controls = await reader.decodeFromConstraints(
-      {
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      },
+    stream = await getRearCameraStream();
+    if (session !== scannerSession || !bulkDialog.open) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    barcodeVideo.srcObject = stream;
+    scannerTrack = stream.getVideoTracks()[0] || null;
+    focusScannerButton.disabled = !scannerTrack;
+    await enableContinuousFocus().catch(() => false);
+
+    const Reader = ZXingBrowser.BrowserMultiFormatOneDReader
+      || ZXingBrowser.BrowserMultiFormatReader;
+    const reader = new Reader();
+    const controls = await reader.decodeFromStream(
+      stream,
       barcodeVideo,
       (result) => {
         if (result && session === scannerSession) addScannedIsbn(result.getText());
@@ -593,14 +668,21 @@ async function startBarcodeScanner() {
     }
     scannerControls = controls;
     startScannerButton.textContent = "Fotocamera attiva";
-    setScannerStatus("Inquadra il codice a barre sul retro del libro.");
+    setScannerStatus("Fotocamera pronta: l’ISBN verrà aggiunto appena riconosciuto.");
   } catch (error) {
+    if (stream && barcodeVideo.srcObject !== stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
     releaseScannerCamera();
     if (session !== scannerSession) return;
     startScannerButton.disabled = false;
     startScannerButton.textContent = "Riprova fotocamera";
     setScannerStatus(scannerErrorMessage(error), "error");
   }
+}
+
+function shouldAutoStartScanner() {
+  return window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0;
 }
 
 function openBulkDialog() {
@@ -612,7 +694,11 @@ function openBulkDialog() {
   startBulkButton.textContent = "Importa libri";
   updateBulkEntryCount();
   bulkDialog.showModal();
-  bulkIsbnInput.focus();
+  if (shouldAutoStartScanner()) {
+    startBarcodeScanner();
+  } else {
+    bulkIsbnInput.focus();
+  }
 }
 
 function closeBulkDialog() {
@@ -876,6 +962,8 @@ cancelBulkButton.addEventListener("click", closeBulkDialog);
 startBulkButton.addEventListener("click", importMultipleIsbns);
 startScannerButton.addEventListener("click", startBarcodeScanner);
 stopScannerButton.addEventListener("click", () => stopBarcodeScanner());
+focusScannerButton.addEventListener("click", refocusScannerCamera);
+barcodeVideo.addEventListener("click", refocusScannerCamera);
 bulkIsbnInput.addEventListener("input", updateBulkEntryCount);
 document.querySelector("#closeShelfButton").addEventListener("click", closeShelfPicker);
 document.querySelector("#cancelShelfButton").addEventListener("click", closeShelfPicker);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260702-bulkfull1">
+  <link rel="stylesheet" href="styles.css?v=20260702-camera2">
 </head>
 <body>
   <header class="topbar">
@@ -182,7 +182,11 @@
             Inquadra il codice a barre sul retro del libro.
           </p>
           <p>Ogni ISBN riconosciuto viene aggiunto automaticamente all’elenco.</p>
-          <button class="secondary" id="stopScannerButton" type="button">Termina scansione</button>
+          <p class="scanner-distance-tip">Tieni il telefono a circa 15–25 cm e porta il codice dentro il riquadro arancione.</p>
+          <div class="scanner-camera-actions">
+            <button class="secondary" id="focusScannerButton" type="button" disabled>Metti a fuoco</button>
+            <button class="secondary" id="stopScannerButton" type="button">Termina scansione</button>
+          </div>
         </div>
       </section>
 
@@ -258,6 +262,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260702-scanner1"></script>
+  <script type="module" src="app.js?v=20260702-camera2"></script>
 </body>
 </html>
