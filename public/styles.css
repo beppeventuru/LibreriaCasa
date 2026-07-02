@@ -232,6 +232,7 @@ dialog::backdrop { background: rgba(10, 24, 20, .58); backdrop-filter: blur(3px)
 .auth-message:not(:empty) { padding: .65rem; border-radius: 9px; background: var(--green-soft); }
 #bookDialog { width: min(980px, calc(100vw - 2rem)); overflow: hidden; }
 #bookForm { padding: 1rem 1.25rem; }
+.book-form-scroll { min-width: 0; }
 .dialog-header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
 .dialog-header h2 { margin: 0; font: 1.8rem Georgia, serif; }
 .dialog-header-actions { display: flex; align-items: center; gap: .45rem; }
@@ -482,20 +483,102 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .card-button { display: grid; grid-template-columns: 92px 1fr; min-height: 138px; }
   .cover { width: 92px; height: 138px; min-height: 138px; aspect-ratio: auto; }
   .book-info { min-width: 0; }
-  dialog { width: 100%; max-height: 94vh; margin: auto 0 0; border-radius: 20px 20px 0 0; }
-  #bookForm { padding: 1rem; }
+  dialog { width: 100%; max-height: 94dvh; margin: auto 0 0; border-radius: 20px 20px 0 0; }
+  #bookDialog,
+  .shelf-dialog {
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  #bookDialog[open] { display: block; }
+  #bookForm {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    padding: .8rem;
+  }
+  #bookForm > .dialog-header {
+    flex: 0 0 auto;
+    margin-bottom: .55rem;
+  }
+  .dialog-header h2 { font-size: 1.55rem; }
+  .book-form-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 -.25rem;
+    padding: 0 .25rem .8rem;
+    overscroll-behavior: contain;
+  }
   .isbn-lookup { grid-template-columns: 1fr; }
+  .isbn-lookup > div:first-child p { display: none; }
   .isbn-lookup .isbn-status { grid-column: auto; }
-  .isbn-controls { flex-direction: column; }
-  .form-grid { grid-template-columns: 1fr; }
-  .form-grid .wide { grid-column: auto; }
-  .location-controls { flex-direction: column; }
+  .isbn-controls { flex-direction: row; }
+  .isbn-controls input { min-width: 0; }
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+  .form-grid .wide, .form-grid .location-field { grid-column: 1/-1; }
+  .location-controls { flex-direction: row; }
   .dialog-actions { position: sticky; bottom: -1rem; padding: .8rem 0 1rem; background: var(--surface); }
+  #bookForm > .dialog-actions {
+    position: static;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: .7rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+  #bookForm > .dialog-actions button { min-height: 44px; }
   .bulk-dialog { width: 100%; max-height: 94vh; margin: auto 0 0; padding: 1rem; border-radius: 20px 20px 0 0; }
   .bulk-result { grid-template-columns: 1fr; gap: .3rem; }
   .bulk-manual-button { justify-self: start; margin-top: .25rem; }
-  .shelf-dialog { width: 100%; max-height: 94vh; margin: auto 0 0; padding: 1rem; border-radius: 20px 20px 0 0; }
-  .shelf-picker-body { grid-template-columns: 1fr 120px; gap: .8rem; }
-  .shelf-picker-map { max-height: 58vh; }
+  .shelf-dialog {
+    overflow: hidden;
+    padding: .8rem;
+  }
+  .shelf-dialog[open] { display: flex; flex-direction: column; }
+  .shelf-dialog > .dialog-header,
+  .shelf-dialog > .library-selector,
+  .shelf-dialog > .dialog-actions { flex: 0 0 auto; }
+  .library-selector { margin-bottom: .45rem; padding-bottom: .55rem; }
+  .library-selector > p { margin-bottom: .45rem; }
+  .library-choice-buttons { gap: .35rem; }
+  .library-choice-buttons button { padding: .45rem .25rem; font-size: .8rem; }
+  .shelf-picker-body {
+    grid-template-columns: 1fr;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: .35rem;
+    align-items: start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #shelfMapContainer { min-height: 0; }
+  .shelf-picker-map {
+    width: min(100%, 340px);
+    height: min(54dvh, 500px);
+    max-height: none;
+    touch-action: manipulation;
+  }
+  .shelf-picker-help { text-align: center; }
+  .shelf-picker-help > p:first-child,
   .shelf-picker-help ul { display: none; }
+  .shelf-selection { margin: 0; padding: .5rem; }
+  .shelf-dialog > .dialog-actions {
+    position: static;
+    bottom: auto;
+    margin: .5rem 0 0;
+    padding: .65rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .shelf-dialog > .dialog-actions button { min-height: 46px; }
+}
+
+@media (max-width: 360px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .wide, .form-grid .location-field { grid-column: auto; }
+  .isbn-controls, .location-controls { flex-direction: column; }
 }

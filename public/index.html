@@ -91,58 +91,60 @@
       </div>
 
       <input id="bookId" type="hidden">
-      <section class="isbn-lookup">
-        <div>
-          <label for="isbnInput">Carica i dati tramite ISBN</label>
-          <p>Scrivi il codice riportato vicino al codice a barre del libro.</p>
+      <div class="book-form-scroll">
+        <section class="isbn-lookup">
+          <div>
+            <label for="isbnInput">Carica i dati tramite ISBN</label>
+            <p>Scrivi il codice riportato vicino al codice a barre del libro.</p>
+          </div>
+          <div class="isbn-controls">
+            <input id="isbnInput" name="isbn" inputmode="numeric" autocomplete="off" placeholder="Es. 9788806225315">
+            <button class="lookup-button" id="lookupIsbnButton" type="button">Cerca libro</button>
+          </div>
+          <p id="isbnStatus" class="isbn-status" role="status" aria-live="polite"></p>
+        </section>
+        <div class="form-grid">
+          <label class="wide">Titolo *
+            <input name="title" required autocomplete="off">
+          </label>
+          <label class="wide">Autore o autori
+            <input name="authors" placeholder="Es. Italo Calvino">
+          </label>
+          <label>Editore
+            <input name="publisher">
+          </label>
+          <label>Anno di pubblicazione
+            <input name="publication_year" type="number" min="1" max="9999">
+          </label>
+          <label>Lingua
+            <input name="language" value="Italiano">
+          </label>
+          <div class="form-field location-field">
+            <label for="locationInput">Collocazione</label>
+            <span class="location-controls">
+              <input id="locationInput" name="location" placeholder="Es. Camera · Sinistra 1">
+              <button class="shelf-picker-button" id="openShelfPickerButton" type="button">Scegli scaffale</button>
+            </span>
+          </div>
+          <label>Sistemazione
+            <input class="automatic-status" name="reading_status" value="Da sistemare" readonly>
+          </label>
+          <label>Prestato a
+            <input name="loaned_to" placeholder="Lascia vuoto se è in casa">
+          </label>
+          <label>Tag
+            <input name="tags" placeholder="Es. narrativa, preferiti">
+          </label>
+          <label class="wide">URL copertina
+            <input name="cover_url" type="url" placeholder="https://…">
+          </label>
+          <label class="wide">Note
+            <textarea name="notes" rows="2"></textarea>
+          </label>
         </div>
-        <div class="isbn-controls">
-          <input id="isbnInput" name="isbn" inputmode="numeric" autocomplete="off" placeholder="Es. 9788806225315">
-          <button class="lookup-button" id="lookupIsbnButton" type="button">Cerca libro</button>
-        </div>
-        <p id="isbnStatus" class="isbn-status" role="status" aria-live="polite"></p>
-      </section>
-      <div class="form-grid">
-        <label class="wide">Titolo *
-          <input name="title" required autocomplete="off">
-        </label>
-        <label class="wide">Autore o autori
-          <input name="authors" placeholder="Es. Italo Calvino">
-        </label>
-        <label>Editore
-          <input name="publisher">
-        </label>
-        <label>Anno di pubblicazione
-          <input name="publication_year" type="number" min="1" max="9999">
-        </label>
-        <label>Lingua
-          <input name="language" value="Italiano">
-        </label>
-        <div class="form-field location-field">
-          <label for="locationInput">Collocazione</label>
-          <span class="location-controls">
-            <input id="locationInput" name="location" placeholder="Es. Camera · Sinistra 1">
-            <button class="shelf-picker-button" id="openShelfPickerButton" type="button">Scegli scaffale</button>
-          </span>
-        </div>
-        <label>Sistemazione
-          <input class="automatic-status" name="reading_status" value="Da sistemare" readonly>
-        </label>
-        <label>Prestato a
-          <input name="loaned_to" placeholder="Lascia vuoto se è in casa">
-        </label>
-        <label>Tag
-          <input name="tags" placeholder="Es. narrativa, preferiti">
-        </label>
-        <label class="wide">URL copertina
-          <input name="cover_url" type="url" placeholder="https://…">
-        </label>
-        <label class="wide">Note
-          <textarea name="notes" rows="2"></textarea>
-        </label>
-      </div>
 
-      <p id="formError" class="error" role="alert"></p>
+        <p id="formError" class="error" role="alert"></p>
+      </div>
       <div class="dialog-actions">
         <button class="danger ghost" id="deleteBookButton" type="button" hidden>Elimina</button>
         <span class="spacer"></span>
