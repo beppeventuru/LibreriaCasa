@@ -136,6 +136,7 @@ h1 {
   font-weight: 700;
 }
 .header-secondary:hover { background: rgba(255,255,255,.16); }
+.compact-label { display: none; }
 .secondary { color: var(--ink); border: 1px solid var(--line); background: white; }
 .ghost { color: var(--danger); background: transparent; }
 .icon-button { width: 42px; padding: 0; color: var(--muted); background: transparent; font-size: 1.7rem; }
@@ -466,6 +467,36 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   font-weight: 750;
 }
 .bulk-manual-button:disabled { opacity: .5; }
+.backup-dialog {
+  width: min(620px, calc(100vw - 2rem));
+  padding: 1.25rem;
+}
+.backup-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .8rem;
+}
+.backup-options section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: start;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #faf8f2;
+}
+.backup-options h3 { margin: 0; color: var(--green); font-size: 1rem; }
+.backup-options p { flex: 1; margin: .45rem 0 .9rem; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+.backup-status { min-height: 1.2em; margin: .8rem 0 0; color: var(--green); font-size: .85rem; font-weight: 750; }
+.backup-status.is-error { color: var(--danger); }
+.duplicate-dialog {
+  width: min(470px, calc(100vw - 2rem));
+  padding: 1.3rem;
+}
+.duplicate-dialog h2 { margin: 0; font: 1.8rem Georgia, serif; }
+.duplicate-dialog > p:not(.eyebrow) { margin: .7rem 0 0; color: var(--muted); line-height: 1.5; }
+.duplicate-dialog #duplicateMessage { color: var(--ink); font-weight: 750; }
 .shelf-dialog { width: min(760px, calc(100vw - 2rem)); padding: 1rem 1.25rem; overflow: hidden; }
 .library-selector {
   margin-bottom: .7rem;
@@ -548,6 +579,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .header-search-group .count { min-width: auto; font-size: .78rem; }
   .header-secondary { padding: .5rem .6rem; font-size: .76rem; }
   .topbar .primary { padding: .55rem .7rem; font-size: .82rem; }
+  .wide-label { display: none; }
+  .compact-label { display: inline; }
   main { width: min(100% - 2rem, 1180px); padding: 2.8rem 0; }
   .hero { margin-bottom: 2rem; }
   .toolbar { align-items: stretch; flex-direction: column; }
@@ -646,6 +679,14 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .bulk-dialog textarea { height: min(20dvh, 145px); min-height: 112px; }
   .bulk-result { grid-template-columns: 1fr; gap: .3rem; }
   .bulk-manual-button { justify-self: start; margin-top: .25rem; }
+  .backup-dialog, .duplicate-dialog {
+    width: 100%;
+    padding: 1rem;
+  }
+  .backup-options { grid-template-columns: 1fr; }
+  .backup-options section { padding: .85rem; }
+  .duplicate-dialog .dialog-actions { align-items: stretch; flex-direction: column-reverse; }
+  .duplicate-dialog .dialog-actions .spacer { display: none; }
   .shelf-dialog {
     overflow: hidden;
     padding: .8rem;

@@ -17,6 +17,7 @@ const searchInput = document.querySelector("#searchInput");
 const searchField = document.querySelector("#searchField");
 const dialog = document.querySelector("#bookDialog");
 const form = document.querySelector("#bookForm");
+const formSubmitButton = form.querySelector('button[type="submit"]');
 const formError = document.querySelector("#formError");
 const bookId = document.querySelector("#bookId");
 const dialogTitle = document.querySelector("#dialogTitle");
@@ -57,10 +58,38 @@ const authMessage = document.querySelector("#authMessage");
 const signUpButton = document.querySelector("#signUpButton");
 const signOutButton = document.querySelector("#signOutButton");
 const importLocalButton = document.querySelector("#importLocalButton");
+const backupDialog = document.querySelector("#backupDialog");
+const backupButton = document.querySelector("#backupButton");
+const closeBackupButton = document.querySelector("#closeBackupButton");
+const dismissBackupButton = document.querySelector("#dismissBackupButton");
+const exportBackupButton = document.querySelector("#exportBackupButton");
+const importBackupButton = document.querySelector("#importBackupButton");
+const backupFileInput = document.querySelector("#backupFileInput");
+const backupStatus = document.querySelector("#backupStatus");
+const duplicateDialog = document.querySelector("#duplicateDialog");
+const duplicateMessage = document.querySelector("#duplicateMessage");
+const rejectDuplicateButton = document.querySelector("#rejectDuplicateButton");
+const acceptDuplicateButton = document.querySelector("#acceptDuplicateButton");
+
+const BOOK_DATA_FIELDS = [
+  "title",
+  "authors",
+  "isbn",
+  "publisher",
+  "publication_year",
+  "language",
+  "location",
+  "reading_status",
+  "loaned_to",
+  "tags",
+  "notes",
+  "cover_url"
+];
 
 let books = [];
 let searchTimer;
 let bulkRunning = false;
+let backupRunning = false;
 let scannerControls = null;
 let scannerTrack = null;
 let scannerLibraryPromise = null;
@@ -70,6 +99,7 @@ let lastScanTime = 0;
 let dialogMode = "create";
 let currentLibrarySelection = "";
 let currentShelfSelection = "";
+let duplicateDecisionResolver = null;
 
 function makeShelfPositions(group, count, x, width, y = 40, step = 92, height = 72) {
   return Array.from({ length: count }, (_, index) => ({
@@ -453,6 +483,176 @@ function isValidIsbn(value) {
   return false;
 }
 
+function bookPayloadFrom(source = {}) {
+  const payload = Object.fromEntries(BOOK_DATA_FIELDS.map((field) => [
+    field,
+    field === "publication_year" ? source[field] ?? null : String(source[field] ?? "")
+  ]));
+  const year = Number(payload.publication_year);
+  payload.publication_year = Number.isInteger(year) && year > 0 ? year : null;
+  payload.title = payload.title.trim();
+  return payload;
+}
+
+function bookFingerprint(source) {
+  const payload = bookPayloadFrom(source);
+  return JSON.stringify(BOOK_DATA_FIELDS.map((field) => (
+    field === "publication_year"
+      ? payload[field]
+      : String(payload[field] ?? "").trim()
+  )));
+}
+
+function settleDuplicateDecision(accepted) {
+  const resolve = duplicateDecisionResolver;
+  duplicateDecisionResolver = null;
+  if (duplicateDialog.open) duplicateDialog.close();
+  if (resolve) resolve(accepted);
+}
+
+function confirmAdditionalCopy({ title, isbn, existingCount }) {
+  if (duplicateDecisionResolver) settleDuplicateDecision(false);
+  const copies = existingCount === 1 ? "una copia" : `${existingCount} copie`;
+  duplicateMessage.textContent =
+    `Il catalogo contiene già ${copies} di “${title || "questo libro"}” con ISBN ${isbn}.`;
+  acceptDuplicateButton.textContent = `Aggiungi la ${existingCount + 1}ª copia`;
+  duplicateDialog.showModal();
+  return new Promise((resolve) => {
+    duplicateDecisionResolver = resolve;
+  });
+}
+
+function setBackupStatus(message, error = false) {
+  backupStatus.textContent = message;
+  backupStatus.className = `backup-status${error ? " is-error" : ""}`;
+}
+
+function setBackupBusy(busy) {
+  backupRunning = busy;
+  exportBackupButton.disabled = busy;
+  importBackupButton.disabled = busy;
+  closeBackupButton.disabled = busy;
+  dismissBackupButton.disabled = busy;
+}
+
+function openBackupDialog() {
+  backupFileInput.value = "";
+  setBackupStatus("");
+  backupDialog.showModal();
+}
+
+function closeBackupDialog() {
+  if (!backupRunning) backupDialog.close();
+}
+
+async function exportBackup() {
+  setBackupBusy(true);
+  setBackupStatus("Preparo il backup…");
+
+  try {
+    const catalog = await listBooks();
+    const backup = {
+      format: "libreria-casa-backup",
+      version: 1,
+      exported_at: new Date().toISOString(),
+      books: catalog.map((book) => ({
+        source_id: String(book.id ?? ""),
+        ...bookPayloadFrom(book)
+      }))
+    };
+    const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `libreria-casa-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setBackupStatus(`Backup creato: ${catalog.length} ${catalog.length === 1 ? "libro" : "libri"}.`);
+  } catch (error) {
+    setBackupStatus(`Esportazione non riuscita: ${error.message}`, true);
+  } finally {
+    setBackupBusy(false);
+  }
+}
+
+async function importBackupFile(file) {
+  setBackupBusy(true);
+  setBackupStatus("Controllo il file…");
+
+  try {
+    const backup = JSON.parse(await file.text());
+    if (
+      backup?.format !== "libreria-casa-backup"
+      || backup?.version !== 1
+      || !Array.isArray(backup.books)
+    ) {
+      throw new Error("Il file non è un backup valido di Libreria Casa.");
+    }
+
+    const currentBooks = await listBooks();
+    const existingSourceIds = new Set(
+      currentBooks.map((book) => String(book.id ?? "")).filter(Boolean)
+    );
+    const remainingFingerprints = new Map();
+    currentBooks.forEach((book) => {
+      const fingerprint = bookFingerprint(book);
+      remainingFingerprints.set(fingerprint, (remainingFingerprints.get(fingerprint) || 0) + 1);
+    });
+
+    let imported = 0;
+    let alreadyPresent = 0;
+    let failed = 0;
+
+    for (let index = 0; index < backup.books.length; index += 1) {
+      const record = backup.books[index];
+      const sourceId = String(record?.source_id ?? "");
+      setBackupStatus(`Importazione ${index + 1} di ${backup.books.length}…`);
+
+      if (sourceId && existingSourceIds.has(sourceId)) {
+        alreadyPresent += 1;
+        continue;
+      }
+
+      const payload = bookPayloadFrom(record);
+      if (!payload.title) {
+        failed += 1;
+        continue;
+      }
+
+      const fingerprint = bookFingerprint(payload);
+      const matchingCopies = remainingFingerprints.get(fingerprint) || 0;
+      if (matchingCopies > 0) {
+        remainingFingerprints.set(fingerprint, matchingCopies - 1);
+        alreadyPresent += 1;
+        continue;
+      }
+
+      try {
+        await saveBook(payload);
+        imported += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    await loadBooks(searchInput.value);
+    setBackupStatus(
+      `Importazione completata: ${imported} aggiunti, ${alreadyPresent} già presenti`
+      + `${failed ? `, ${failed} non riusciti` : ""}.`,
+      failed > 0
+    );
+  } catch (error) {
+    setBackupStatus(`Importazione non riuscita: ${error.message}`, true);
+  } finally {
+    backupFileInput.value = "";
+    setBackupBusy(false);
+  }
+}
+
 function enteredIsbns() {
   return bulkIsbnInput.value
     .split(/\r?\n/)
@@ -462,8 +662,7 @@ function enteredIsbns() {
 
 function updateBulkEntryCount() {
   const codes = enteredIsbns();
-  const uniqueCount = new Set(codes).size;
-  bulkEntryCount.textContent = `${uniqueCount} ${uniqueCount === 1 ? "codice" : "codici"}`;
+  bulkEntryCount.textContent = `${codes.length} ${codes.length === 1 ? "codice" : "codici"}`;
 }
 
 function setScannerStatus(message, state = "") {
@@ -836,7 +1035,7 @@ function addBulkResult(isbn, state, message) {
 }
 
 async function importMultipleIsbns() {
-  const isbns = [...new Set(enteredIsbns())];
+  const isbns = enteredIsbns();
 
   bulkResults.replaceChildren();
   if (!isbns.length) {
@@ -852,28 +1051,45 @@ async function importMultipleIsbns() {
   cancelBulkButton.disabled = true;
   startScannerButton.disabled = true;
   let imported = 0;
-  let skipped = 0;
+  let notImported = 0;
   let failed = 0;
 
   try {
     const allBooks = await listBooks();
-    const existingIsbns = new Set(allBooks.map((book) => cleanIsbn(book.isbn)).filter(Boolean));
+    const existingByIsbn = new Map();
+    allBooks.forEach((book) => {
+      const isbn = cleanIsbn(book.isbn);
+      if (!isbn) return;
+      const matchingBooks = existingByIsbn.get(isbn) || [];
+      matchingBooks.push(book);
+      existingByIsbn.set(isbn, matchingBooks);
+    });
 
     for (let index = 0; index < isbns.length; index += 1) {
       const isbn = isbns[index];
       bulkProgress.textContent = `Elaborazione ${index + 1} di ${isbns.length}: ${isbn}`;
 
-      if (existingIsbns.has(isbn)) {
-        skipped += 1;
-        addBulkResult(isbn, "skipped", "Già presente nel catalogo");
-        continue;
+      const matchingBooks = existingByIsbn.get(isbn) || [];
+      if (matchingBooks.length) {
+        const accepted = await confirmAdditionalCopy({
+          title: matchingBooks[0].title,
+          isbn,
+          existingCount: matchingBooks.length
+        });
+        if (!accepted) {
+          notImported += 1;
+          addBulkResult(isbn, "skipped", "Non importato: possibile doppione");
+          continue;
+        }
       }
 
       try {
         const metadata = await lookupBookByIsbn(isbn);
         await saveBook(metadata);
         imported += 1;
-        existingIsbns.add(isbn);
+        const copies = existingByIsbn.get(isbn) || [];
+        copies.push(metadata);
+        existingByIsbn.set(isbn, copies);
         addBulkResult(isbn, "success", metadata.title);
       } catch (error) {
         failed += 1;
@@ -886,7 +1102,7 @@ async function importMultipleIsbns() {
     }
 
     bulkProgress.textContent =
-      `Completato: ${imported} importati, ${skipped} già presenti, ${failed} non riusciti.`;
+      `Completato: ${imported} importati, ${notImported} non importati, ${failed} non riusciti.`;
     await loadBooks(searchInput.value);
   } catch (error) {
     bulkProgress.textContent = `Importazione interrotta: ${error.message}`;
@@ -909,12 +1125,39 @@ form.addEventListener("submit", async (event) => {
   formError.textContent = "";
   const payload = Object.fromEntries(new FormData(form));
   const id = bookId.value;
+  formSubmitButton.disabled = true;
   try {
+    const isbn = cleanIsbn(payload.isbn);
+    if (isbn) {
+      const allBooks = await listBooks();
+      const originalBook = id
+        ? allBooks.find((book) => String(book.id) === String(id))
+        : null;
+      const isbnChanged = !originalBook || cleanIsbn(originalBook.isbn) !== isbn;
+      const matchingBooks = isbnChanged
+        ? allBooks.filter((book) => String(book.id) !== String(id) && cleanIsbn(book.isbn) === isbn)
+        : [];
+
+      if (matchingBooks.length) {
+        const accepted = await confirmAdditionalCopy({
+          title: matchingBooks[0].title || payload.title,
+          isbn,
+          existingCount: matchingBooks.length
+        });
+        if (!accepted) {
+          formError.textContent = "Salvataggio annullato: il libro era già presente.";
+          return;
+        }
+      }
+    }
+
     await saveBook(payload, id);
     closeDialog();
     await loadBooks(searchInput.value);
   } catch (error) {
     formError.textContent = error.message;
+  } finally {
+    formSubmitButton.disabled = false;
   }
 });
 
@@ -1029,13 +1272,8 @@ importLocalButton.addEventListener("click", async () => {
     const response = await fetch("/api/books?q=&field=all");
     const localBooks = await response.json();
     if (!response.ok) throw new Error(localBooks.error || "Archivio locale non disponibile");
-    const fields = [
-      "title", "authors", "isbn", "publisher", "publication_year", "language",
-      "location", "reading_status", "loaned_to", "tags", "notes", "cover_url"
-    ];
     for (const localBook of localBooks) {
-      const payload = Object.fromEntries(fields.map((field) => [field, localBook[field] ?? ""]));
-      await saveBook(payload);
+      await saveBook(bookPayloadFrom(localBook));
     }
     await loadBooks();
   } catch (error) {
@@ -1049,6 +1287,17 @@ importLocalButton.addEventListener("click", async () => {
 document.querySelector("#addBookButton").addEventListener("click", () => openDialog());
 document.querySelector("#emptyAddButton").addEventListener("click", () => openDialog());
 document.querySelector("#bulkImportButton").addEventListener("click", openBulkDialog);
+backupButton.addEventListener("click", openBackupDialog);
+closeBackupButton.addEventListener("click", closeBackupDialog);
+dismissBackupButton.addEventListener("click", closeBackupDialog);
+exportBackupButton.addEventListener("click", exportBackup);
+importBackupButton.addEventListener("click", () => backupFileInput.click());
+backupFileInput.addEventListener("change", () => {
+  const [file] = backupFileInput.files;
+  if (file) importBackupFile(file);
+});
+rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
+acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
 document.querySelector("#openShelfPickerButton").addEventListener("click", openShelfPicker);
 editBookButton.addEventListener("click", () => {
   setDialogMode("edit");
@@ -1094,6 +1343,19 @@ shelfDialog.addEventListener("click", (event) => {
   if (event.target === shelfDialog) closeShelfPicker();
 });
 authDialog.addEventListener("cancel", (event) => event.preventDefault());
+backupDialog.addEventListener("cancel", (event) => {
+  if (backupRunning) event.preventDefault();
+});
+backupDialog.addEventListener("click", (event) => {
+  if (event.target === backupDialog) closeBackupDialog();
+});
+duplicateDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  settleDuplicateDecision(false);
+});
+duplicateDialog.addEventListener("click", (event) => {
+  if (event.target === duplicateDialog) settleDuplicateDecision(false);
+});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && scannerControls) stopBarcodeScanner();
 });

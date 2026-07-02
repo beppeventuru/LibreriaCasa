@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260702-native1">
+  <link rel="stylesheet" href="styles.css?v=20260702-backup1">
 </head>
 <body>
   <header class="topbar">
@@ -37,8 +37,13 @@
     </div>
     <div class="topbar-actions">
       <button class="header-secondary" id="signOutButton" type="button" hidden>Esci</button>
-      <button class="header-secondary" id="bulkImportButton" type="button">Importa più ISBN</button>
-      <button class="primary" id="addBookButton" type="button">＋ Aggiungi libro</button>
+      <button class="header-secondary" id="backupButton" type="button">Backup</button>
+      <button class="header-secondary" id="bulkImportButton" type="button" aria-label="Importa più ISBN">
+        <span class="wide-label">Importa più ISBN</span><span class="compact-label">ISBN</span>
+      </button>
+      <button class="primary" id="addBookButton" type="button" aria-label="Aggiungi libro">
+        <span class="wide-label">＋ Aggiungi libro</span><span class="compact-label">＋ Libro</span>
+      </button>
     </div>
   </header>
 
@@ -201,6 +206,48 @@
     </div>
   </dialog>
 
+  <dialog id="backupDialog" class="backup-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Archivio personale</p>
+        <h2>Esporta o importa</h2>
+      </div>
+      <button class="icon-button" id="closeBackupButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="backup-options">
+      <section>
+        <h3>Esporta il catalogo</h3>
+        <p>Scarica un backup completo dei libri, comprese collocazioni, prestiti, tag e note.</p>
+        <button class="primary" id="exportBackupButton" type="button">Scarica backup</button>
+      </section>
+      <section>
+        <h3>Importa un backup</h3>
+        <p>Ripristina un file creato da Libreria Casa. Le copie già presenti non verranno duplicate.</p>
+        <input id="backupFileInput" type="file" accept=".json,application/json" hidden>
+        <button class="secondary" id="importBackupButton" type="button">Scegli file</button>
+      </section>
+    </div>
+
+    <p id="backupStatus" class="backup-status" role="status" aria-live="polite"></p>
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button class="secondary" id="dismissBackupButton" type="button">Chiudi</button>
+    </div>
+  </dialog>
+
+  <dialog id="duplicateDialog" class="duplicate-dialog">
+    <p class="eyebrow">Possibile doppione</p>
+    <h2>Questo libro è già presente</h2>
+    <p id="duplicateMessage"></p>
+    <p>Potrebbe essere un errore oppure un’altra copia fisica del volume.</p>
+    <div class="dialog-actions">
+      <button class="secondary" id="rejectDuplicateButton" type="button">È un errore</button>
+      <span class="spacer"></span>
+      <button class="primary" id="acceptDuplicateButton" type="button">Aggiungi un’altra copia</button>
+    </div>
+  </dialog>
+
   <dialog id="shelfDialog" class="shelf-dialog">
     <div class="dialog-header">
       <div>
@@ -255,6 +302,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260702-native1"></script>
+  <script type="module" src="app.js?v=20260702-backup1"></script>
 </body>
 </html>
