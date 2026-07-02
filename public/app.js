@@ -33,6 +33,12 @@ const bulkResults = document.querySelector("#bulkResults");
 const startBulkButton = document.querySelector("#startBulkButton");
 const closeBulkButton = document.querySelector("#closeBulkButton");
 const cancelBulkButton = document.querySelector("#cancelBulkButton");
+const startScannerButton = document.querySelector("#startScannerButton");
+const stopScannerButton = document.querySelector("#stopScannerButton");
+const barcodeScanner = document.querySelector("#barcodeScanner");
+const barcodeVideo = document.querySelector("#barcodeVideo");
+const scannerStatus = document.querySelector("#scannerStatus");
+const bulkEntryCount = document.querySelector("#bulkEntryCount");
 const shelfDialog = document.querySelector("#shelfDialog");
 const shelfMapContainer = document.querySelector("#shelfMapContainer");
 const shelfSelectionText = document.querySelector("#shelfSelectionText");
@@ -54,6 +60,11 @@ const importLocalButton = document.querySelector("#importLocalButton");
 let books = [];
 let searchTimer;
 let bulkRunning = false;
+let scannerControls = null;
+let scannerLibraryPromise = null;
+let scannerSession = 0;
+let lastScannedCode = "";
+let lastScanTime = 0;
 let dialogMode = "create";
 let currentLibrarySelection = "";
 let currentShelfSelection = "";
@@ -418,18 +429,197 @@ function cleanIsbn(value) {
   return String(value ?? "").toUpperCase().replace(/[^0-9X]/g, "");
 }
 
+function isValidIsbn(value) {
+  const isbn = cleanIsbn(value);
+
+  if (isbn.length === 13 && /^(978|979)\d{10}$/.test(isbn)) {
+    const sum = [...isbn.slice(0, 12)].reduce(
+      (total, digit, index) => total + Number(digit) * (index % 2 === 0 ? 1 : 3),
+      0
+    );
+    return (10 - (sum % 10)) % 10 === Number(isbn[12]);
+  }
+
+  if (isbn.length === 10 && /^\d{9}[\dX]$/.test(isbn)) {
+    const sum = [...isbn].reduce(
+      (total, digit, index) => total + (digit === "X" ? 10 : Number(digit)) * (10 - index),
+      0
+    );
+    return sum % 11 === 0;
+  }
+
+  return false;
+}
+
+function enteredIsbns() {
+  return bulkIsbnInput.value
+    .split(/\r?\n/)
+    .map(cleanIsbn)
+    .filter(Boolean);
+}
+
+function updateBulkEntryCount() {
+  const codes = enteredIsbns();
+  const uniqueCount = new Set(codes).size;
+  bulkEntryCount.textContent = `${uniqueCount} ${uniqueCount === 1 ? "codice" : "codici"}`;
+}
+
+function setScannerStatus(message, state = "") {
+  scannerStatus.textContent = message;
+  scannerStatus.className = "scanner-status";
+  if (state) scannerStatus.classList.add(`is-${state}`);
+}
+
+function loadScannerLibrary() {
+  if (window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
+  if (scannerLibraryPromise) return scannerLibraryPromise;
+
+  scannerLibraryPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/@zxing/browser@0.2.0/umd/zxing-browser.min.js";
+    script.async = true;
+    script.dataset.barcodeScanner = "true";
+    script.addEventListener("load", () => resolve(window.ZXingBrowser));
+    script.addEventListener("error", () => reject(new Error("Impossibile caricare lo scanner.")));
+    document.head.append(script);
+  }).catch((error) => {
+    scannerLibraryPromise = null;
+    throw error;
+  });
+
+  return scannerLibraryPromise;
+}
+
+function addScannedIsbn(rawValue) {
+  const isbn = cleanIsbn(rawValue);
+  const now = Date.now();
+  if (isbn === lastScannedCode && now - lastScanTime < 2000) return;
+  lastScannedCode = isbn;
+  lastScanTime = now;
+
+  if (!isValidIsbn(isbn)) {
+    setScannerStatus(`Codice ${isbn || "non leggibile"}: non è un ISBN valido.`, "error");
+    return;
+  }
+
+  if (enteredIsbns().includes(isbn)) {
+    setScannerStatus(`${isbn} è già presente nell’elenco.`, "duplicate");
+    return;
+  }
+
+  const currentValue = bulkIsbnInput.value.trimEnd();
+  bulkIsbnInput.value = `${currentValue}${currentValue ? "\n" : ""}${isbn}\n`;
+  updateBulkEntryCount();
+  setScannerStatus(`ISBN ${isbn} aggiunto. Inquadra il prossimo libro.`, "success");
+  if (navigator.vibrate) navigator.vibrate(80);
+}
+
+function releaseScannerCamera() {
+  if (scannerControls) {
+    scannerControls.stop();
+    scannerControls = null;
+  }
+  const stream = barcodeVideo.srcObject;
+  if (stream) stream.getTracks().forEach((track) => track.stop());
+  barcodeVideo.srcObject = null;
+}
+
+function stopBarcodeScanner({ hide = true } = {}) {
+  scannerSession += 1;
+  releaseScannerCamera();
+  startScannerButton.disabled = bulkRunning;
+  startScannerButton.textContent = "Scansiona con fotocamera";
+  if (hide) {
+    barcodeScanner.hidden = true;
+    setScannerStatus("Inquadra il codice a barre sul retro del libro.");
+    if (bulkDialog.open) bulkIsbnInput.focus();
+  }
+}
+
+function scannerErrorMessage(error) {
+  if (error?.name === "NotAllowedError") {
+    return "Permesso fotocamera negato. Abilitalo nelle impostazioni del browser e riprova.";
+  }
+  if (error?.name === "NotFoundError" || error?.name === "OverconstrainedError") {
+    return "Non è stata trovata una fotocamera posteriore disponibile.";
+  }
+  if (error?.name === "NotReadableError") {
+    return "La fotocamera è già utilizzata da un’altra applicazione.";
+  }
+  return error?.message || "Non riesco ad avviare la fotocamera.";
+}
+
+async function startBarcodeScanner() {
+  if (bulkRunning || scannerControls) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    barcodeScanner.hidden = false;
+    setScannerStatus("Questo browser non consente l’uso della fotocamera. Puoi continuare con la pistola scanner.", "error");
+    return;
+  }
+
+  barcodeScanner.hidden = false;
+  startScannerButton.disabled = true;
+  startScannerButton.textContent = "Avvio fotocamera…";
+  setScannerStatus("Sto preparando la fotocamera…");
+  lastScannedCode = "";
+  lastScanTime = 0;
+  const session = ++scannerSession;
+
+  try {
+    const ZXingBrowser = await loadScannerLibrary();
+    if (session !== scannerSession || !bulkDialog.open) return;
+    if (!ZXingBrowser?.BrowserMultiFormatReader) {
+      throw new Error("Scanner non disponibile.");
+    }
+
+    const reader = new ZXingBrowser.BrowserMultiFormatReader();
+    const controls = await reader.decodeFromConstraints(
+      {
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      },
+      barcodeVideo,
+      (result) => {
+        if (result && session === scannerSession) addScannedIsbn(result.getText());
+      }
+    );
+    if (session !== scannerSession || !bulkDialog.open) {
+      controls.stop();
+      return;
+    }
+    scannerControls = controls;
+    startScannerButton.textContent = "Fotocamera attiva";
+    setScannerStatus("Inquadra il codice a barre sul retro del libro.");
+  } catch (error) {
+    releaseScannerCamera();
+    if (session !== scannerSession) return;
+    startScannerButton.disabled = false;
+    startScannerButton.textContent = "Riprova fotocamera";
+    setScannerStatus(scannerErrorMessage(error), "error");
+  }
+}
+
 function openBulkDialog() {
+  stopBarcodeScanner();
   bulkIsbnInput.value = "";
   bulkProgress.textContent = "";
   bulkResults.replaceChildren();
   startBulkButton.disabled = false;
   startBulkButton.textContent = "Importa libri";
+  updateBulkEntryCount();
   bulkDialog.showModal();
   bulkIsbnInput.focus();
 }
 
 function closeBulkDialog() {
-  if (!bulkRunning) bulkDialog.close();
+  if (!bulkRunning) {
+    stopBarcodeScanner();
+    bulkDialog.close();
+  }
 }
 
 function addBulkResult(isbn, state, message) {
@@ -461,12 +651,7 @@ function addBulkResult(isbn, state, message) {
 }
 
 async function importMultipleIsbns() {
-  const isbns = [...new Set(
-    bulkIsbnInput.value
-      .split(/\r?\n/)
-      .map(cleanIsbn)
-      .filter(Boolean)
-  )];
+  const isbns = [...new Set(enteredIsbns())];
 
   bulkResults.replaceChildren();
   if (!isbns.length) {
@@ -475,10 +660,12 @@ async function importMultipleIsbns() {
     return;
   }
 
+  stopBarcodeScanner();
   bulkRunning = true;
   startBulkButton.disabled = true;
   closeBulkButton.disabled = true;
   cancelBulkButton.disabled = true;
+  startScannerButton.disabled = true;
   let imported = 0;
   let skipped = 0;
   let failed = 0;
@@ -523,6 +710,7 @@ async function importMultipleIsbns() {
     startBulkButton.disabled = false;
     closeBulkButton.disabled = false;
     cancelBulkButton.disabled = false;
+    startScannerButton.disabled = false;
     bulkResults.querySelectorAll(".bulk-manual-button").forEach((button) => {
       button.disabled = false;
     });
@@ -686,6 +874,9 @@ document.querySelector("#cancelButton").addEventListener("click", closeDialog);
 closeBulkButton.addEventListener("click", closeBulkDialog);
 cancelBulkButton.addEventListener("click", closeBulkDialog);
 startBulkButton.addEventListener("click", importMultipleIsbns);
+startScannerButton.addEventListener("click", startBarcodeScanner);
+stopScannerButton.addEventListener("click", () => stopBarcodeScanner());
+bulkIsbnInput.addEventListener("input", updateBulkEntryCount);
 document.querySelector("#closeShelfButton").addEventListener("click", closeShelfPicker);
 document.querySelector("#cancelShelfButton").addEventListener("click", closeShelfPicker);
 libraryButtons.forEach((button) => {
@@ -699,8 +890,13 @@ applyShelfButton.addEventListener("click", () => {
 });
 form.elements.location.addEventListener("input", updatePlacementStatus);
 bulkDialog.addEventListener("cancel", (event) => {
-  if (bulkRunning) event.preventDefault();
+  if (bulkRunning) {
+    event.preventDefault();
+  } else {
+    stopBarcodeScanner();
+  }
 });
+bulkDialog.addEventListener("close", () => stopBarcodeScanner());
 dialog.addEventListener("click", (event) => {
   if (event.target === dialog) closeDialog();
 });
@@ -711,6 +907,9 @@ shelfDialog.addEventListener("click", (event) => {
   if (event.target === shelfDialog) closeShelfPicker();
 });
 authDialog.addEventListener("cancel", (event) => event.preventDefault());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && scannerControls) stopBarcodeScanner();
+});
 
 initializeApp().catch((error) => {
   grid.textContent = `Impossibile caricare il catalogo: ${error.message}`;
