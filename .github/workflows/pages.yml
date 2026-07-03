@@ -1,4 +1,4 @@
-name: Pubblica Libreria Casa
+name: Prepara Libreria Casa per GitHub Pages
 
 on:
   push:
@@ -6,29 +6,33 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: gh-pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Scarica il progetto
         uses: actions/checkout@v6
-      - name: Configura Pages
-        uses: actions/configure-pages@v5
-      - name: Prepara i file del sito
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: public
-      - name: Pubblica
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Aggiorna il ramo gh-pages
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          publish_dir="$(mktemp -d)"
+          cp -a public/. "$publish_dir/"
+          touch "$publish_dir/.nojekyll"
+          cd "$publish_dir"
+          git init
+          git checkout -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "Pubblica ${GITHUB_SHA}"
+          git push --force \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            gh-pages
