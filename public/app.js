@@ -2,17 +2,20 @@ import {
   filterBooks,
   getSession,
   isCloudMode,
+  lendBook,
   listBooks,
+  listBookLoans,
   lookupBookByIsbn,
   listenForPasswordRecovery,
   removeBook,
   requestPasswordReset,
+  returnBook,
   saveBook,
   signIn,
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260703-auth1";
+} from "./data-service.js?v=20260703-loans1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
@@ -91,6 +94,17 @@ const duplicateDialog = document.querySelector("#duplicateDialog");
 const duplicateMessage = document.querySelector("#duplicateMessage");
 const rejectDuplicateButton = document.querySelector("#rejectDuplicateButton");
 const acceptDuplicateButton = document.querySelector("#acceptDuplicateButton");
+const loanManager = document.querySelector("#loanManager");
+const newLoanSection = document.querySelector("#newLoanSection");
+const currentLoanSection = document.querySelector("#currentLoanSection");
+const loanBorrower = document.querySelector("#loanBorrower");
+const loanDate = document.querySelector("#loanDate");
+const currentLoanText = document.querySelector("#currentLoanText");
+const returnDate = document.querySelector("#returnDate");
+const lendBookButton = document.querySelector("#lendBookButton");
+const returnBookButton = document.querySelector("#returnBookButton");
+const loanStatus = document.querySelector("#loanStatus");
+const loanHistory = document.querySelector("#loanHistory");
 
 const BOOK_DATA_FIELDS = [
   "title",
@@ -534,12 +548,13 @@ function setDialogMode(mode) {
   deleteButton.hidden = !editing;
 
   form.querySelectorAll("input:not([type='hidden']), textarea").forEach((field) => {
-    field.readOnly = viewing;
+    field.readOnly = viewing && !field.closest(".loan-manager");
   });
   form.elements.reading_status.readOnly = true;
   form.querySelectorAll("select").forEach((field) => {
     field.disabled = viewing;
   });
+  loanManager.hidden = !viewing || !bookId.value || !isCloudMode;
 }
 
 function resetPlacementUi() {
@@ -569,6 +584,7 @@ function openDialog(book = null) {
   updatePlacementStatus();
   setDialogMode(book ? "view" : "create");
   dialog.showModal();
+  if (book) renderLoanManager(book);
   if (!book) isbnInput.focus();
 }
 
@@ -576,6 +592,71 @@ function closeDialog() {
   placementWorkflow = false;
   resetPlacementUi();
   dialog.close();
+}
+
+function localDateValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatLoanDate(value) {
+  if (!value) return "";
+  return new Date(`${value}T00:00:00`).toLocaleDateString("it-IT");
+}
+
+async function renderLoanManager(book) {
+  if (!isCloudMode || !book?.id) {
+    loanManager.hidden = true;
+    return;
+  }
+
+  loanManager.hidden = dialogMode !== "view";
+  newLoanSection.hidden = Boolean(book.loaned_to);
+  currentLoanSection.hidden = !book.loaned_to;
+  currentLoanText.textContent = book.loaned_to
+    ? `Attualmente prestato a ${book.loaned_to}.`
+    : "";
+  loanBorrower.value = "";
+  loanDate.value = localDateValue();
+  returnDate.value = localDateValue();
+  loanStatus.textContent = "";
+  loanHistory.textContent = "Caricamento storico…";
+
+  try {
+    const history = await listBookLoans(book.id);
+    if (String(bookId.value) !== String(book.id)) return;
+    loanHistory.replaceChildren();
+    if (!history.length) {
+      loanHistory.textContent = "Nessun prestito precedente.";
+      return;
+    }
+    const list = document.createElement("ul");
+    for (const loan of history) {
+      const item = document.createElement("li");
+      const returned = loan.returned_at
+        ? `restituito il ${formatLoanDate(loan.returned_at)}`
+        : "ancora in prestito";
+      item.textContent =
+        `${loan.borrower} · dal ${formatLoanDate(loan.loaned_at)} · ${returned}`;
+      list.append(item);
+    }
+    loanHistory.append(list);
+  } catch (error) {
+    loanHistory.textContent = `Storico non disponibile: ${error.message}`;
+  }
+}
+
+async function refreshBookAfterLoan(bookIdToRefresh) {
+  await loadBooks(searchInput.value);
+  const updatedBook = catalogBooks.find(
+    (book) => String(book.id) === String(bookIdToRefresh)
+  );
+  if (!updatedBook) return;
+  form.elements.loaned_to.value = updatedBook.loaned_to || "";
+  await renderLoanManager(updatedBook);
 }
 
 function getUnplacedBooks() {
@@ -1554,6 +1635,40 @@ backupFileInput.addEventListener("change", () => {
 rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
 document.querySelector("#openShelfPickerButton").addEventListener("click", openShelfPicker);
+lendBookButton.addEventListener("click", async () => {
+  const borrower = loanBorrower.value.trim();
+  if (!borrower) {
+    loanStatus.textContent = "Inserisci il nome della persona.";
+    loanBorrower.focus();
+    return;
+  }
+  const currentBookId = bookId.value;
+  lendBookButton.disabled = true;
+  loanStatus.textContent = "Registrazione…";
+  try {
+    await lendBook(currentBookId, borrower, loanDate.value || localDateValue());
+    await refreshBookAfterLoan(currentBookId);
+    loanStatus.textContent = "Prestito registrato.";
+  } catch (error) {
+    loanStatus.textContent = error.message;
+  } finally {
+    lendBookButton.disabled = false;
+  }
+});
+returnBookButton.addEventListener("click", async () => {
+  const currentBookId = bookId.value;
+  returnBookButton.disabled = true;
+  loanStatus.textContent = "Registrazione…";
+  try {
+    await returnBook(currentBookId, returnDate.value || localDateValue());
+    await refreshBookAfterLoan(currentBookId);
+    loanStatus.textContent = "Libro restituito.";
+  } catch (error) {
+    loanStatus.textContent = error.message;
+  } finally {
+    returnBookButton.disabled = false;
+  }
+});
 editBookButton.addEventListener("click", () => {
   setDialogMode("edit");
   form.elements.title.focus();

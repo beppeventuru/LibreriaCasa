@@ -106,6 +106,40 @@ export async function updatePassword(password) {
   if (error) throw error;
 }
 
+export async function listBookLoans(bookId) {
+  if (!isCloudMode) return [];
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("book_loans")
+    .select("id, borrower, loaned_at, returned_at")
+    .eq("book_id", bookId)
+    .order("loaned_at", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function lendBook(bookId, borrower, loanedAt) {
+  if (!isCloudMode) throw new Error("La gestione prestiti richiede l’archivio online.");
+  const supabase = await getSupabase();
+  const { error } = await supabase.rpc("lend_book", {
+    p_book_id: bookId,
+    p_borrower: borrower,
+    p_loaned_at: loanedAt
+  });
+  if (error) throw error;
+}
+
+export async function returnBook(bookId, returnedAt) {
+  if (!isCloudMode) throw new Error("La gestione prestiti richiede l’archivio online.");
+  const supabase = await getSupabase();
+  const { error } = await supabase.rpc("return_book", {
+    p_book_id: bookId,
+    p_returned_at: returnedAt
+  });
+  if (error) throw error;
+}
+
 export async function listenForPasswordRecovery(callback) {
   if (!isCloudMode) return;
   const supabase = await getSupabase();

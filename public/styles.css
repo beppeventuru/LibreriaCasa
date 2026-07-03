@@ -328,6 +328,47 @@ dialog::backdrop { background: rgba(10, 24, 20, .58); backdrop-filter: blur(3px)
   font-weight: 800;
   text-decoration: underline;
 }
+.loaned-to-field { display: none !important; }
+.loan-manager {
+  margin-top: .8rem;
+  padding: .9rem;
+  border: 1px solid #bdd2cb;
+  border-radius: 12px;
+  background: var(--green-soft);
+}
+.loan-manager-heading,
+.loan-current,
+.loan-new {
+  display: flex;
+  align-items: end;
+  gap: .7rem;
+}
+.loan-manager-heading { align-items: start; justify-content: space-between; }
+.loan-manager h3 { margin: .1rem 0 .7rem; font: 1.25rem Georgia, serif; }
+.loan-current p { flex: 1; margin: 0 0 .65rem; font-weight: 750; }
+.loan-current label,
+.loan-new label {
+  display: grid;
+  flex: 1;
+  gap: .3rem;
+  color: #53605b;
+  font-size: .8rem;
+  font-weight: 750;
+}
+.loan-status { margin: 0; color: var(--green); font-size: .8rem; font-weight: 800; }
+.loan-history-details { margin-top: .8rem; border-top: 1px solid #bdd2cb; padding-top: .7rem; }
+.loan-history-details summary { cursor: pointer; color: var(--green); font-weight: 800; }
+.loan-history { margin-top: .6rem; color: var(--muted); font-size: .85rem; }
+.loan-history ul { display: grid; gap: .35rem; margin: 0; padding-left: 1.2rem; }
+@media (max-width: 620px) {
+  .loan-current,
+  .loan-new { align-items: stretch; flex-direction: column; }
+  .loan-current p,
+  .loan-current label,
+  .loan-new label,
+  .loan-current button,
+  .loan-new button { width: 100%; }
+}
 #bookDialog { width: min(980px, calc(100vw - 2rem)); overflow: hidden; }
 #bookForm { padding: 1rem 1.25rem; }
 .book-form-scroll { min-width: 0; }

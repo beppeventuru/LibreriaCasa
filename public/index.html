@@ -197,7 +197,7 @@
           <label class="status-field">Sistemazione
             <input class="automatic-status" name="reading_status" value="Da sistemare" readonly>
           </label>
-          <label>Prestato a
+          <label class="loaned-to-field">Prestato a
             <input name="loaned_to" placeholder="Lascia vuoto se è in casa">
           </label>
           <label>Tag
@@ -210,6 +210,39 @@
             <textarea name="notes" rows="2"></textarea>
           </label>
         </div>
+
+        <section class="loan-manager" id="loanManager" hidden>
+          <div class="loan-manager-heading">
+            <div>
+              <p class="eyebrow">Prestiti</p>
+              <h3>Gestione prestito</h3>
+            </div>
+            <p id="loanStatus" class="loan-status" role="status"></p>
+          </div>
+
+          <div class="loan-current" id="currentLoanSection" hidden>
+            <p id="currentLoanText"></p>
+            <label>Data restituzione
+              <input id="returnDate" type="date">
+            </label>
+            <button class="secondary" id="returnBookButton" type="button">Segna restituito</button>
+          </div>
+
+          <div class="loan-new" id="newLoanSection">
+            <label>Prestato a
+              <input id="loanBorrower" autocomplete="off" placeholder="Nome della persona">
+            </label>
+            <label>Data del prestito
+              <input id="loanDate" type="date">
+            </label>
+            <button class="primary" id="lendBookButton" type="button">Registra prestito</button>
+          </div>
+
+          <details class="loan-history-details">
+            <summary>Storico prestiti</summary>
+            <div id="loanHistory" class="loan-history"></div>
+          </details>
+        </section>
 
         <p id="formError" class="error" role="alert"></p>
       </div>
@@ -365,6 +398,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-auth1"></script>
+  <script type="module" src="app.js?v=20260703-loans1"></script>
 </body>
 </html>
