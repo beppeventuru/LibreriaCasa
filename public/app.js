@@ -16,6 +16,8 @@ const emptyState = document.querySelector("#emptyState");
 const count = document.querySelector("#bookCount");
 const searchInput = document.querySelector("#searchInput");
 const searchField = document.querySelector("#searchField");
+const sortField = document.querySelector("#sortField");
+const sortDirectionButton = document.querySelector("#sortDirectionButton");
 const quickFilterButtons = [...document.querySelectorAll("[data-quick-filter]")];
 const dialog = document.querySelector("#bookDialog");
 const form = document.querySelector("#bookForm");
@@ -92,6 +94,7 @@ let catalogBooks = [];
 let books = [];
 let searchTimer;
 let activeQuickFilter = "all";
+let sortAscending = true;
 let bulkRunning = false;
 let backupRunning = false;
 let scannerControls = null;
@@ -188,9 +191,45 @@ function renderQuickFilters() {
   });
 }
 
+function compareBooks(left, right) {
+  const field = sortField.value;
+  if (field === "publication_year") {
+    const leftYear = Number(left[field]) || 0;
+    const rightYear = Number(right[field]) || 0;
+    if (!leftYear && rightYear) return 1;
+    if (leftYear && !rightYear) return -1;
+    return (leftYear - rightYear) * (sortAscending ? 1 : -1);
+  }
+  const leftValue = String(left[field] ?? "").trim();
+  const rightValue = String(right[field] ?? "").trim();
+  if (!leftValue && rightValue) return 1;
+  if (leftValue && !rightValue) return -1;
+  return leftValue.localeCompare(
+    rightValue,
+    "it",
+    { sensitivity: "base", numeric: true }
+  ) * (sortAscending ? 1 : -1);
+}
+
+function updateSortDirection() {
+  const chronological = sortField.value === "publication_year";
+  sortDirectionButton.textContent = chronological
+    ? (sortAscending ? "↑" : "↓")
+    : (sortAscending ? "A–Z" : "Z–A");
+  sortDirectionButton.setAttribute(
+    "aria-label",
+    chronological
+      ? (sortAscending ? "Anno crescente" : "Anno decrescente")
+      : (sortAscending ? "Ordine dalla A alla Z" : "Ordine dalla Z alla A")
+  );
+}
+
 function applyCatalogView(query = searchInput.value, field = searchField.value) {
   const searchedBooks = filterBooks(catalogBooks, query, field);
-  books = searchedBooks.filter((book) => matchesQuickFilter(book));
+  books = searchedBooks
+    .filter((book) => matchesQuickFilter(book))
+    .sort(compareBooks);
+  updateSortDirection();
   renderQuickFilters();
   renderBooks();
 }
@@ -1255,6 +1294,12 @@ searchInput.addEventListener("input", () => {
 
 searchField.addEventListener("change", () => {
   clearTimeout(searchTimer);
+  applyCatalogView();
+});
+
+sortField.addEventListener("change", applyCatalogView);
+sortDirectionButton.addEventListener("click", () => {
+  sortAscending = !sortAscending;
   applyCatalogView();
 });
 

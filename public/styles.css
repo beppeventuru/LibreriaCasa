@@ -81,6 +81,30 @@ button { cursor: pointer; }
   gap: .45rem;
   padding: .55rem 5vw;
 }
+.quick-sort {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: .4rem;
+  padding: 0 .65rem;
+  border: 1px solid #c9d4ce;
+  border-radius: 999px;
+  color: var(--green);
+  background: var(--surface);
+  white-space: nowrap;
+  font-size: .76rem;
+  font-weight: 750;
+}
+.quick-sort select {
+  width: auto;
+  min-height: 30px;
+  padding: 0 1.35rem 0 0;
+  border: 0;
+  color: var(--green);
+  background: transparent;
+  font-size: .76rem;
+  font-weight: 800;
+}
 .quick-filters button {
   display: inline-flex;
   min-height: 34px;
@@ -95,6 +119,7 @@ button { cursor: pointer; }
   font-size: .78rem;
   font-weight: 750;
 }
+.quick-filters .sort-direction { min-width: 48px; justify-content: center; }
 .quick-filters button:hover { border-color: var(--green); }
 .quick-filters button[aria-pressed="true"] {
   border-color: var(--green);
@@ -637,6 +662,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
     padding: .5rem 1rem;
   }
   .quick-filters button { min-height: 32px; padding: .35rem .65rem; font-size: .74rem; }
+  .quick-sort { min-height: 32px; padding: 0 .55rem; }
   main { width: min(100% - 2rem, 1180px); padding: 2.8rem 0; }
   .hero { margin-bottom: 2rem; }
   .toolbar { align-items: stretch; flex-direction: column; }

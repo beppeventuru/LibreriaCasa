@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-filters1">
+  <link rel="stylesheet" href="styles.css?v=20260703-sort1">
 </head>
 <body>
   <header class="topbar">
@@ -49,6 +49,18 @@
 
   <div class="quick-filter-shell">
     <nav id="quickFilters" class="quick-filters" aria-label="Filtri rapidi">
+      <label class="quick-sort">
+        <span>Ordina</span>
+        <select id="sortField" aria-label="Ordina i libri per">
+          <option value="title">Titolo</option>
+          <option value="authors">Autore</option>
+          <option value="publisher">Editore</option>
+          <option value="publication_year">Anno</option>
+        </select>
+      </label>
+      <button class="sort-direction" id="sortDirectionButton" type="button" aria-label="Ordine dalla A alla Z">
+        A–Z
+      </button>
       <button type="button" data-quick-filter="all" aria-pressed="true">
         Tutti <span data-quick-count>0</span>
       </button>
@@ -325,6 +337,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-filters1"></script>
+  <script type="module" src="app.js?v=20260703-sort1"></script>
 </body>
 </html>
