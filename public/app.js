@@ -1382,7 +1382,7 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (dialogMode === "view") return;
   formError.textContent = "";
-  const payload = Object.fromEntries(new FormData(form));
+  const payload = bookPayloadFrom(Object.fromEntries(new FormData(form)));
   const id = bookId.value;
   formSubmitButton.disabled = true;
   try {
