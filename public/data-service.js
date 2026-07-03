@@ -130,14 +130,18 @@ export async function lendBook(bookId, borrower, loanedAt) {
   if (error) throw error;
 }
 
-export async function returnBook(bookId, returnedAt) {
+export async function returnBook(bookId) {
   if (!isCloudMode) throw new Error("La gestione prestiti richiede l’archivio online.");
   const supabase = await getSupabase();
   const { error } = await supabase.rpc("return_book", {
-    p_book_id: bookId,
-    p_returned_at: returnedAt
+    p_book_id: bookId
   });
   if (error) throw error;
+  const { error: updateError } = await supabase
+    .from("books")
+    .update({ loaned_to: "" })
+    .eq("id", bookId);
+  if (updateError) throw updateError;
 }
 
 export async function listenForPasswordRecovery(callback) {

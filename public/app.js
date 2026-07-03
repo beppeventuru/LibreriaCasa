@@ -15,7 +15,7 @@ import {
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260703-loans1";
+} from "./data-service.js?v=20260703-loans2";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
@@ -39,6 +39,7 @@ const bookId = document.querySelector("#bookId");
 const dialogTitle = document.querySelector("#dialogTitle");
 const deleteButton = document.querySelector("#deleteBookButton");
 const editBookButton = document.querySelector("#editBookButton");
+const loanBookButton = document.querySelector("#loanBookButton");
 const cardTemplate = document.querySelector("#bookCardTemplate");
 const isbnInput = document.querySelector("#isbnInput");
 const lookupIsbnButton = document.querySelector("#lookupIsbnButton");
@@ -100,7 +101,6 @@ const currentLoanSection = document.querySelector("#currentLoanSection");
 const loanBorrower = document.querySelector("#loanBorrower");
 const loanDate = document.querySelector("#loanDate");
 const currentLoanText = document.querySelector("#currentLoanText");
-const returnDate = document.querySelector("#returnDate");
 const lendBookButton = document.querySelector("#lendBookButton");
 const returnBookButton = document.querySelector("#returnBookButton");
 const loanStatus = document.querySelector("#loanStatus");
@@ -545,6 +545,7 @@ function setDialogMode(mode) {
       ? "Modifica libro"
       : "Aggiungi libro";
   editBookButton.hidden = !viewing;
+  loanBookButton.hidden = !viewing || !bookId.value || !isCloudMode;
   deleteButton.hidden = !editing;
 
   form.querySelectorAll("input:not([type='hidden']), textarea").forEach((field) => {
@@ -554,7 +555,7 @@ function setDialogMode(mode) {
   form.querySelectorAll("select").forEach((field) => {
     field.disabled = viewing;
   });
-  loanManager.hidden = !viewing || !bookId.value || !isCloudMode;
+  loanManager.hidden = true;
 }
 
 function resetPlacementUi() {
@@ -613,7 +614,6 @@ async function renderLoanManager(book) {
     return;
   }
 
-  loanManager.hidden = dialogMode !== "view";
   newLoanSection.hidden = Boolean(book.loaned_to);
   currentLoanSection.hidden = !book.loaned_to;
   currentLoanText.textContent = book.loaned_to
@@ -621,7 +621,6 @@ async function renderLoanManager(book) {
     : "";
   loanBorrower.value = "";
   loanDate.value = localDateValue();
-  returnDate.value = localDateValue();
   loanStatus.textContent = "";
   loanHistory.textContent = "Caricamento storico…";
 
@@ -656,6 +655,7 @@ async function refreshBookAfterLoan(bookIdToRefresh) {
   );
   if (!updatedBook) return;
   form.elements.loaned_to.value = updatedBook.loaned_to || "";
+  loanManager.hidden = false;
   await renderLoanManager(updatedBook);
 }
 
@@ -1635,6 +1635,15 @@ backupFileInput.addEventListener("change", () => {
 rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
 document.querySelector("#openShelfPickerButton").addEventListener("click", openShelfPicker);
+loanBookButton.addEventListener("click", async () => {
+  const opening = loanManager.hidden;
+  loanManager.hidden = !opening;
+  if (!opening) return;
+  const book = catalogBooks.find((item) => String(item.id) === String(bookId.value));
+  if (!book) return;
+  await renderLoanManager(book);
+  loanManager.scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
 lendBookButton.addEventListener("click", async () => {
   const borrower = loanBorrower.value.trim();
   if (!borrower) {
@@ -1660,7 +1669,7 @@ returnBookButton.addEventListener("click", async () => {
   returnBookButton.disabled = true;
   loanStatus.textContent = "Registrazione…";
   try {
-    await returnBook(currentBookId, returnDate.value || localDateValue());
+    await returnBook(currentBookId);
     await refreshBookAfterLoan(currentBookId);
     loanStatus.textContent = "Libro restituito.";
   } catch (error) {

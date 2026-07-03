@@ -336,6 +336,10 @@ dialog::backdrop { background: rgba(10, 24, 20, .58); backdrop-filter: blur(3px)
   border-radius: 12px;
   background: var(--green-soft);
 }
+.loan-manager[hidden],
+.loan-current[hidden],
+.loan-new[hidden] { display: none !important; }
+.loan-book-button { min-height: 40px; }
 .loan-manager-heading,
 .loan-current,
 .loan-new {

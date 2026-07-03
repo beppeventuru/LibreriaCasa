@@ -148,6 +148,7 @@
         <h2 id="dialogTitle">Aggiungi libro</h2>
       </div>
       <div class="dialog-header-actions">
+        <button class="secondary loan-book-button" id="loanBookButton" type="button" hidden>Prestito</button>
         <button class="edit-book-button" id="editBookButton" type="button" hidden>Modifica</button>
         <button class="icon-button" id="closeDialogButton" type="button" aria-label="Chiudi">×</button>
       </div>
@@ -222,9 +223,6 @@
 
           <div class="loan-current" id="currentLoanSection" hidden>
             <p id="currentLoanText"></p>
-            <label>Data restituzione
-              <input id="returnDate" type="date">
-            </label>
             <button class="secondary" id="returnBookButton" type="button">Segna restituito</button>
           </div>
 
@@ -398,6 +396,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-loans1"></script>
+  <script type="module" src="app.js?v=20260703-loans2"></script>
 </body>
 </html>
