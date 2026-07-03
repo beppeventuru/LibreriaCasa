@@ -800,6 +800,16 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .cover { width: 92px; height: 138px; min-height: 138px; aspect-ratio: auto; }
   .book-info { min-width: 0; }
   dialog { width: 100%; max-height: 94dvh; margin: auto 0 0; border-radius: 20px 20px 0 0; }
+  .auth-dialog {
+    inset: 0;
+    width: min(440px, calc(100vw - 1.5rem));
+    height: max-content;
+    max-height: calc(100dvh - 1.5rem);
+    margin: auto;
+    overflow-y: auto;
+    border-radius: 20px;
+  }
+  .auth-dialog form { padding: 1.15rem; }
   #bookDialog,
   .shelf-dialog {
     inset: 0;
