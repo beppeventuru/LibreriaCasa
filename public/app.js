@@ -26,6 +26,8 @@ const cancelBookButton = document.querySelector("#cancelButton");
 const closeBookButton = document.querySelector("#closeDialogButton");
 const placementModeButton = document.querySelector("#placementModeButton");
 const placementProgress = document.querySelector("#placementProgress");
+const placementCover = document.querySelector("#placementCover");
+const placementCoverPlaceholder = document.querySelector("#placementCoverPlaceholder");
 const formError = document.querySelector("#formError");
 const bookId = document.querySelector("#bookId");
 const dialogTitle = document.querySelector("#dialogTitle");
@@ -576,10 +578,20 @@ function openPlacementBook(book) {
   placementProgress.textContent = `${remaining} ${
     remaining === 1 ? "libro ancora da sistemare" : "libri ancora da sistemare"
   }`;
+  const coverUrl = String(book.cover_url ?? "").trim();
+  placementCover.hidden = !coverUrl;
+  placementCoverPlaceholder.hidden = Boolean(coverUrl);
+  placementCover.alt = coverUrl ? `Copertina di ${book.title}` : "";
+  placementCover.src = coverUrl;
   cancelBookButton.textContent = "Esci";
   formSubmitButton.textContent = "Salva e continua";
   document.querySelector("#openShelfPickerButton").focus();
 }
+
+placementCover.addEventListener("error", () => {
+  placementCover.hidden = true;
+  placementCoverPlaceholder.hidden = false;
+});
 
 function startPlacementWorkflow() {
   const pendingBooks = getUnplacedBooks();

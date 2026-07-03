@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-place2">
+  <link rel="stylesheet" href="styles.css?v=20260703-place3">
 </head>
 <body>
   <header class="topbar">
@@ -146,6 +146,10 @@
           <p id="isbnStatus" class="isbn-status" role="status" aria-live="polite"></p>
         </section>
         <div class="form-grid">
+          <div class="placement-cover-field" aria-label="Copertina del libro">
+            <img id="placementCover" alt="">
+            <span id="placementCoverPlaceholder" aria-hidden="true">▥</span>
+          </div>
           <label class="wide title-field">Titolo *
             <input name="title" required autocomplete="off">
           </label>
@@ -339,6 +343,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-place2"></script>
+  <script type="module" src="app.js?v=20260703-place3"></script>
 </body>
 </html>
