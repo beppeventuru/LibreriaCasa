@@ -133,10 +133,21 @@ export async function lendBook(bookId, borrower, loanedAt) {
 export async function returnBook(bookId) {
   if (!isCloudMode) throw new Error("La gestione prestiti richiede l’archivio online.");
   const supabase = await getSupabase();
-  const { error } = await supabase.rpc("return_book", {
-    p_book_id: bookId
-  });
-  if (error) throw error;
+  const { data: activeLoans, error: historyError } = await supabase
+    .from("book_loans")
+    .select("id, loaned_at")
+    .eq("book_id", bookId)
+    .is("returned_at", null);
+  if (historyError) throw historyError;
+
+  for (const loan of activeLoans || []) {
+    const { error: returnError } = await supabase
+      .from("book_loans")
+      .update({ returned_at: loan.loaned_at })
+      .eq("id", loan.id);
+    if (returnError) throw returnError;
+  }
+
   const { error: updateError } = await supabase
     .from("books")
     .update({ loaned_to: "" })

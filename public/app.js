@@ -15,7 +15,7 @@ import {
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260703-loans2";
+} from "./data-service.js?v=20260703-loans3";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
