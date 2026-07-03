@@ -105,13 +105,23 @@ export async function listBooks(query = "", field = "all") {
     return localRequest(`/api/books?q=${encodeURIComponent(query)}&field=${encodeURIComponent(field)}`);
   }
   const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from("books")
-    .select("*")
-    .order("title", { ascending: true })
-    .order("authors", { ascending: true });
-  if (error) throw error;
-  return filterBooks(data || [], query, field);
+  const pageSize = 500;
+  const books = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("books")
+      .select("*")
+      .order("title", { ascending: true })
+      .order("authors", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    books.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+
+  return filterBooks(books, query, field);
 }
 
 export async function saveBook(payload, id = "") {

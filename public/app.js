@@ -9,7 +9,7 @@ import {
   signIn,
   signOut,
   signUp
-} from "./data-service.js";
+} from "./data-service.js?v=20260703-page1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
