@@ -119,6 +119,66 @@ export async function listBookLoans(bookId) {
   return data || [];
 }
 
+export async function listAllBookLoans() {
+  if (!isCloudMode) return [];
+  const supabase = await getSupabase();
+  const pageSize = 500;
+  const loans = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("book_loans")
+      .select("id, book_id, borrower, loaned_at, returned_at")
+      .order("loaned_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    loans.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+
+  return loans;
+}
+
+export async function importBookLoans(records) {
+  if (!isCloudMode || !records.length) return { imported: 0, alreadyPresent: 0, failed: 0 };
+  const supabase = await getSupabase();
+  const existing = await listAllBookLoans();
+  const fingerprint = (loan) => [
+    String(loan.book_id ?? ""),
+    String(loan.borrower ?? "").trim().toLocaleLowerCase("it"),
+    String(loan.loaned_at ?? ""),
+    String(loan.returned_at ?? "")
+  ].join("|");
+  const known = new Set(existing.map(fingerprint));
+  let imported = 0;
+  let alreadyPresent = 0;
+  let failed = 0;
+
+  for (const record of records) {
+    const normalized = {
+      book_id: record.book_id,
+      borrower: String(record.borrower ?? "").trim(),
+      loaned_at: record.loaned_at,
+      returned_at: record.returned_at || null
+    };
+    const key = fingerprint(normalized);
+    if (known.has(key)) {
+      alreadyPresent += 1;
+      continue;
+    }
+    const { error } = await supabase.from("book_loans").insert(normalized);
+    if (error) {
+      failed += 1;
+      continue;
+    }
+    known.add(key);
+    imported += 1;
+  }
+
+  return { imported, alreadyPresent, failed };
+}
+
 export async function lendBook(bookId, borrower, loanedAt) {
   if (!isCloudMode) throw new Error("La gestione prestiti richiede l’archivio online.");
   const supabase = await getSupabase();

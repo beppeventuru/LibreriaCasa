@@ -1,8 +1,10 @@
 import {
   filterBooks,
   getSession,
+  importBookLoans,
   isCloudMode,
   lendBook,
+  listAllBookLoans,
   listBooks,
   listBookLoans,
   lookupBookByIsbn,
@@ -15,7 +17,7 @@ import {
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260703-loans3";
+} from "./data-service.js?v=20260703-backup1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
@@ -822,14 +824,23 @@ async function exportBackup() {
   setBackupStatus("Preparo il backup…");
 
   try {
-    const catalog = await listBooks();
+    const [catalog, loans] = await Promise.all([
+      listBooks(),
+      listAllBookLoans()
+    ]);
     const backup = {
       format: "libreria-casa-backup",
-      version: 1,
+      version: 2,
       exported_at: new Date().toISOString(),
       books: catalog.map((book) => ({
         source_id: String(book.id ?? ""),
         ...bookPayloadFrom(book)
+      })),
+      loans: loans.map((loan) => ({
+        source_book_id: String(loan.book_id ?? ""),
+        borrower: loan.borrower,
+        loaned_at: loan.loaned_at,
+        returned_at: loan.returned_at
       }))
     };
     const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], {
@@ -843,7 +854,10 @@ async function exportBackup() {
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setBackupStatus(`Backup creato: ${catalog.length} ${catalog.length === 1 ? "libro" : "libri"}.`);
+    setBackupStatus(
+      `Backup creato: ${catalog.length} ${catalog.length === 1 ? "libro" : "libri"}`
+      + ` e ${loans.length} ${loans.length === 1 ? "prestito" : "prestiti"}.`
+    );
   } catch (error) {
     setBackupStatus(`Esportazione non riuscita: ${error.message}`, true);
   } finally {
@@ -859,7 +873,7 @@ async function importBackupFile(file) {
     const backup = JSON.parse(await file.text());
     if (
       backup?.format !== "libreria-casa-backup"
-      || backup?.version !== 1
+      || ![1, 2].includes(Number(backup?.version))
       || !Array.isArray(backup.books)
     ) {
       throw new Error("Il file non è un backup valido di Libreria Casa.");
@@ -869,11 +883,17 @@ async function importBackupFile(file) {
     const existingSourceIds = new Set(
       currentBooks.map((book) => String(book.id ?? "")).filter(Boolean)
     );
-    const remainingFingerprints = new Map();
+    const availableByFingerprint = new Map();
     currentBooks.forEach((book) => {
       const fingerprint = bookFingerprint(book);
-      remainingFingerprints.set(fingerprint, (remainingFingerprints.get(fingerprint) || 0) + 1);
+      const matches = availableByFingerprint.get(fingerprint) || [];
+      matches.push(book);
+      availableByFingerprint.set(fingerprint, matches);
     });
+    const currentById = new Map(
+      currentBooks.map((book) => [String(book.id ?? ""), book])
+    );
+    const restoredBookIds = new Map();
 
     let imported = 0;
     let alreadyPresent = 0;
@@ -885,6 +905,11 @@ async function importBackupFile(file) {
       setBackupStatus(`Importazione ${index + 1} di ${backup.books.length}…`);
 
       if (sourceId && existingSourceIds.has(sourceId)) {
+        restoredBookIds.set(sourceId, sourceId);
+        const existingBook = currentById.get(sourceId);
+        const matches = availableByFingerprint.get(bookFingerprint(existingBook)) || [];
+        const matchIndex = matches.findIndex((book) => String(book.id) === sourceId);
+        if (matchIndex >= 0) matches.splice(matchIndex, 1);
         alreadyPresent += 1;
         continue;
       }
@@ -896,26 +921,44 @@ async function importBackupFile(file) {
       }
 
       const fingerprint = bookFingerprint(payload);
-      const matchingCopies = remainingFingerprints.get(fingerprint) || 0;
-      if (matchingCopies > 0) {
-        remainingFingerprints.set(fingerprint, matchingCopies - 1);
+      const matchingCopies = availableByFingerprint.get(fingerprint) || [];
+      if (matchingCopies.length > 0) {
+        const matchedBook = matchingCopies.shift();
+        if (sourceId) restoredBookIds.set(sourceId, String(matchedBook.id));
         alreadyPresent += 1;
         continue;
       }
 
       try {
-        await saveBook(payload);
+        const savedBook = await saveBook(payload);
+        if (sourceId) restoredBookIds.set(sourceId, String(savedBook.id));
         imported += 1;
       } catch {
         failed += 1;
       }
     }
 
+    const loanRecords = Array.isArray(backup.loans) ? backup.loans : [];
+    const preparedLoans = loanRecords.flatMap((loan) => {
+      const targetBookId = restoredBookIds.get(String(loan?.source_book_id ?? ""));
+      if (!targetBookId || !loan?.borrower || !loan?.loaned_at) return [];
+      return [{
+        book_id: targetBookId,
+        borrower: loan.borrower,
+        loaned_at: loan.loaned_at,
+        returned_at: loan.returned_at || null
+      }];
+    });
+    const loanResult = await importBookLoans(preparedLoans);
+
     await loadBooks(searchInput.value);
     setBackupStatus(
       `Importazione completata: ${imported} aggiunti, ${alreadyPresent} già presenti`
-      + `${failed ? `, ${failed} non riusciti` : ""}.`,
-      failed > 0
+      + `${failed ? `, ${failed} non riusciti` : ""}; `
+      + `${loanResult.imported} prestiti ripristinati`
+      + `${loanResult.alreadyPresent ? `, ${loanResult.alreadyPresent} già presenti` : ""}`
+      + `${loanResult.failed ? `, ${loanResult.failed} prestiti non riusciti` : ""}.`,
+      failed > 0 || loanResult.failed > 0
     );
   } catch (error) {
     setBackupStatus(`Importazione non riuscita: ${error.message}`, true);
@@ -1774,6 +1817,6 @@ initializeApp().catch((error) => {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=20260703-pwa2").catch(() => {});
+    navigator.serviceWorker.register("./service-worker.js?v=20260703-pwa3").catch(() => {});
   });
 }
