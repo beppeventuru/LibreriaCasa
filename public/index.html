@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260702-backup2">
+  <link rel="stylesheet" href="styles.css?v=20260703-filters1">
 </head>
 <body>
   <header class="topbar">
@@ -46,6 +46,29 @@
       </button>
     </div>
   </header>
+
+  <div class="quick-filter-shell">
+    <nav id="quickFilters" class="quick-filters" aria-label="Filtri rapidi">
+      <button type="button" data-quick-filter="all" aria-pressed="true">
+        Tutti <span data-quick-count>0</span>
+      </button>
+      <button type="button" data-quick-filter="unplaced" aria-pressed="false">
+        Da sistemare <span data-quick-count>0</span>
+      </button>
+      <button type="button" data-quick-filter="loaned" aria-pressed="false">
+        Prestati <span data-quick-count>0</span>
+      </button>
+      <button type="button" data-quick-filter="Camera" aria-pressed="false">
+        Camera <span data-quick-count>0</span>
+      </button>
+      <button type="button" data-quick-filter="Sgabuzzino" aria-pressed="false">
+        Sgabuzzino <span data-quick-count>0</span>
+      </button>
+      <button type="button" data-quick-filter="Ingresso" aria-pressed="false">
+        Ingresso <span data-quick-count>0</span>
+      </button>
+    </nav>
+  </div>
 
   <main>
     <section id="emptyState" class="empty" hidden>
@@ -302,6 +325,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260702-backup2"></script>
+  <script type="module" src="app.js?v=20260703-filters1"></script>
 </body>
 </html>

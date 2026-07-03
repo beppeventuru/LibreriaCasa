@@ -1,4 +1,5 @@
 import {
+  filterBooks,
   getSession,
   isCloudMode,
   listBooks,
@@ -15,6 +16,7 @@ const emptyState = document.querySelector("#emptyState");
 const count = document.querySelector("#bookCount");
 const searchInput = document.querySelector("#searchInput");
 const searchField = document.querySelector("#searchField");
+const quickFilterButtons = [...document.querySelectorAll("[data-quick-filter]")];
 const dialog = document.querySelector("#bookDialog");
 const form = document.querySelector("#bookForm");
 const formSubmitButton = form.querySelector('button[type="submit"]');
@@ -86,8 +88,10 @@ const BOOK_DATA_FIELDS = [
   "cover_url"
 ];
 
+let catalogBooks = [];
 let books = [];
 let searchTimer;
+let activeQuickFilter = "all";
 let bulkRunning = false;
 let backupRunning = false;
 let scannerControls = null;
@@ -162,29 +166,63 @@ const shelfProfiles = {
 
 const libraryNames = Object.keys(shelfProfiles);
 
-async function loadBooks(query = "", field = searchField.value) {
-  books = await listBooks(query, field);
+function matchesQuickFilter(book, filter = activeQuickFilter) {
+  if (filter === "all") return true;
+  if (filter === "unplaced") {
+    return !parseLibraryLocation(book.location).library
+      || String(book.reading_status ?? "") === "Da sistemare";
+  }
+  if (filter === "loaned") return Boolean(String(book.loaned_to ?? "").trim());
+  if (libraryNames.includes(filter)) {
+    return parseLibraryLocation(book.location).library === filter;
+  }
+  return true;
+}
+
+function renderQuickFilters() {
+  quickFilterButtons.forEach((button) => {
+    const filter = button.dataset.quickFilter;
+    const total = catalogBooks.filter((book) => matchesQuickFilter(book, filter)).length;
+    button.querySelector("[data-quick-count]").textContent = total;
+    button.setAttribute("aria-pressed", String(filter === activeQuickFilter));
+  });
+}
+
+function applyCatalogView(query = searchInput.value, field = searchField.value) {
+  const searchedBooks = filterBooks(catalogBooks, query, field);
+  books = searchedBooks.filter((book) => matchesQuickFilter(book));
+  renderQuickFilters();
   renderBooks();
+}
+
+async function loadBooks(query = "", field = searchField.value) {
+  catalogBooks = await listBooks();
+  applyCatalogView(query, field);
 }
 
 function renderBooks() {
   grid.replaceChildren();
-  count.textContent = `${books.length} ${books.length === 1 ? "libro" : "libri"}`;
-  emptyState.hidden = books.length > 0 || Boolean(searchInput.value);
+  const filtered = activeQuickFilter !== "all" || Boolean(searchInput.value.trim());
+  count.textContent = filtered
+    ? `${books.length} di ${catalogBooks.length} libri`
+    : `${books.length} ${books.length === 1 ? "libro" : "libri"}`;
+  emptyState.hidden = catalogBooks.length > 0;
   const localAddress = location.hostname === "localhost"
     || location.hostname === "127.0.0.1"
     || location.hostname.startsWith("192.168.");
   importLocalButton.hidden = !(
     isCloudMode
     && localAddress
-    && books.length === 0
+    && catalogBooks.length === 0
     && !searchInput.value
   );
 
-  if (!books.length && searchInput.value) {
+  if (!books.length && catalogBooks.length) {
     const message = document.createElement("p");
     message.className = "no-results";
-    message.textContent = "Nessun libro corrisponde alla ricerca.";
+    message.textContent = searchInput.value.trim()
+      ? "Nessun libro corrisponde alla ricerca in questo filtro."
+      : "Nessun libro presente in questo filtro.";
     grid.append(message);
     return;
   }
@@ -1212,12 +1250,19 @@ deleteButton.addEventListener("click", async () => {
 
 searchInput.addEventListener("input", () => {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => loadBooks(searchInput.value), 220);
+  searchTimer = setTimeout(() => applyCatalogView(), 120);
 });
 
 searchField.addEventListener("change", () => {
   clearTimeout(searchTimer);
-  loadBooks(searchInput.value);
+  applyCatalogView();
+});
+
+quickFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeQuickFilter = button.dataset.quickFilter;
+    applyCatalogView();
+  });
 });
 
 authForm.addEventListener("submit", async (event) => {
@@ -1260,7 +1305,10 @@ signUpButton.addEventListener("click", async () => {
 
 signOutButton.addEventListener("click", async () => {
   await signOut();
+  catalogBooks = [];
   books = [];
+  activeQuickFilter = "all";
+  renderQuickFilters();
   renderBooks();
   showAuthDialog();
 });

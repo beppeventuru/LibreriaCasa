@@ -60,7 +60,7 @@ async function getSupabase() {
   return supabasePromise;
 }
 
-function filterBooks(books, query, field) {
+export function filterBooks(books, query, field) {
   const needle = String(query || "").trim().toLocaleLowerCase("it");
   if (!needle) return books;
   const fields = field === "all" || !searchableFields.includes(field)
