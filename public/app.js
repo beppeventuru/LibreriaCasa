@@ -82,6 +82,7 @@ const passwordError = document.querySelector("#passwordError");
 const passwordMessage = document.querySelector("#passwordMessage");
 const cancelPasswordButton = document.querySelector("#cancelPasswordButton");
 const signOutButton = document.querySelector("#signOutButton");
+const installAppButton = document.querySelector("#installAppButton");
 const importLocalButton = document.querySelector("#importLocalButton");
 const backupDialog = document.querySelector("#backupDialog");
 const backupButton = document.querySelector("#backupButton");
@@ -139,6 +140,18 @@ let placementWorkflow = false;
 let currentLibrarySelection = "";
 let currentShelfSelection = "";
 let duplicateDecisionResolver = null;
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installAppButton.hidden = false;
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  installAppButton.hidden = true;
+});
 
 function makeShelfPositions(group, count, x, width, y = 40, step = 92, height = 72) {
   return Array.from({ length: count }, (_, index) => ({
@@ -1590,6 +1603,13 @@ passwordForm.addEventListener("submit", async (event) => {
 });
 
 cancelPasswordButton.addEventListener("click", () => passwordDialog.close());
+installAppButton.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installAppButton.hidden = true;
+});
 
 signOutButton.addEventListener("click", async () => {
   await signOut();
@@ -1751,3 +1771,9 @@ initializeApp().catch((error) => {
     authError.textContent = error.message;
   }
 });
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}

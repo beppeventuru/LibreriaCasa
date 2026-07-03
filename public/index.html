@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-loans3">
+  <link rel="manifest" href="manifest.webmanifest?v=20260703-pwa1">
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=20260703-pwa1">
 </head>
 <body>
   <header class="topbar">
@@ -36,6 +38,7 @@
       <p id="bookCount" class="count" aria-live="polite"></p>
     </div>
     <div class="topbar-actions">
+      <button class="header-secondary" id="installAppButton" type="button" hidden>Installa</button>
       <button class="header-secondary" id="signOutButton" type="button" hidden>Esci</button>
       <button class="header-secondary" id="backupButton" type="button">Backup</button>
       <button class="header-secondary" id="bulkImportButton" type="button" aria-label="Importa più ISBN">
@@ -396,6 +399,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-form1"></script>
+  <script type="module" src="app.js?v=20260703-pwa1"></script>
 </body>
 </html>
