@@ -93,6 +93,27 @@ export async function signUp(email, password) {
   return data;
 }
 
+export async function requestPasswordReset(email) {
+  const supabase = await getSupabase();
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+export async function updatePassword(password) {
+  const supabase = await getSupabase();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+export async function listenForPasswordRecovery(callback) {
+  if (!isCloudMode) return;
+  const supabase = await getSupabase();
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") callback();
+  });
+}
+
 export async function signOut() {
   if (!isCloudMode) return;
   const supabase = await getSupabase();

@@ -108,12 +108,34 @@
       <label>Password
         <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required>
       </label>
+      <button class="forgot-password" id="forgotPasswordButton" type="button">Password dimenticata?</button>
       <p class="error" id="authError" role="alert"></p>
       <p class="auth-message" id="authMessage" role="status"></p>
       <div class="dialog-actions">
         <button class="secondary" id="signUpButton" type="button">Crea account</button>
         <span class="spacer"></span>
         <button class="primary" type="submit">Accedi</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="auth-dialog" id="passwordDialog">
+    <form id="passwordForm">
+      <p class="eyebrow">Sicurezza</p>
+      <h2>Scegli una nuova password</h2>
+      <p class="auth-intro">Inserisci almeno 6 caratteri.</p>
+      <label>Nuova password
+        <input id="newPassword" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <label>Ripeti la password
+        <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <p class="error" id="passwordError" role="alert"></p>
+      <p class="auth-message" id="passwordMessage" role="status"></p>
+      <div class="dialog-actions">
+        <button class="secondary" id="cancelPasswordButton" type="button">Annulla</button>
+        <span class="spacer"></span>
+        <button class="primary" type="submit">Aggiorna password</button>
       </div>
     </form>
   </dialog>
@@ -343,6 +365,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-page1"></script>
+  <script type="module" src="app.js?v=20260703-auth1"></script>
 </body>
 </html>

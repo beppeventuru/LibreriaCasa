@@ -4,12 +4,15 @@ import {
   isCloudMode,
   listBooks,
   lookupBookByIsbn,
+  listenForPasswordRecovery,
   removeBook,
+  requestPasswordReset,
   saveBook,
   signIn,
   signOut,
-  signUp
-} from "./data-service.js?v=20260703-page1";
+  signUp,
+  updatePassword
+} from "./data-service.js?v=20260703-auth1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
@@ -66,6 +69,14 @@ const authPassword = document.querySelector("#authPassword");
 const authError = document.querySelector("#authError");
 const authMessage = document.querySelector("#authMessage");
 const signUpButton = document.querySelector("#signUpButton");
+const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
+const passwordDialog = document.querySelector("#passwordDialog");
+const passwordForm = document.querySelector("#passwordForm");
+const newPassword = document.querySelector("#newPassword");
+const confirmPassword = document.querySelector("#confirmPassword");
+const passwordError = document.querySelector("#passwordError");
+const passwordMessage = document.querySelector("#passwordMessage");
+const cancelPasswordButton = document.querySelector("#cancelPasswordButton");
 const signOutButton = document.querySelector("#signOutButton");
 const importLocalButton = document.querySelector("#importLocalButton");
 const backupDialog = document.querySelector("#backupDialog");
@@ -489,7 +500,16 @@ function setAuthBusy(busy) {
   });
 }
 
+function showPasswordDialog() {
+  closeAuthDialog();
+  passwordError.textContent = "";
+  passwordMessage.textContent = "";
+  if (!passwordDialog.open) passwordDialog.showModal();
+  newPassword.focus();
+}
+
 async function initializeApp() {
+  await listenForPasswordRecovery(showPasswordDialog);
   const session = await getSession();
   signOutButton.hidden = !isCloudMode;
   if (isCloudMode && !session) {
@@ -1443,6 +1463,52 @@ signUpButton.addEventListener("click", async () => {
     setAuthBusy(false);
   }
 });
+
+forgotPasswordButton.addEventListener("click", async () => {
+  if (!authEmail.reportValidity()) return;
+  authError.textContent = "";
+  authMessage.textContent = "";
+  setAuthBusy(true);
+  try {
+    await requestPasswordReset(authEmail.value.trim());
+    authMessage.textContent = "Email inviata. Apri il link ricevuto per scegliere una nuova password.";
+  } catch (error) {
+    authError.textContent = error.message;
+  } finally {
+    setAuthBusy(false);
+  }
+});
+
+passwordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  passwordError.textContent = "";
+  passwordMessage.textContent = "";
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.textContent = "Le due password non coincidono.";
+    return;
+  }
+  passwordForm.querySelectorAll("button, input").forEach((control) => {
+    control.disabled = true;
+  });
+  try {
+    await updatePassword(newPassword.value);
+    passwordMessage.textContent = "Password aggiornata correttamente.";
+    passwordForm.reset();
+    window.setTimeout(async () => {
+      passwordDialog.close();
+      history.replaceState({}, "", `${location.origin}${location.pathname}`);
+      await loadBooks();
+    }, 900);
+  } catch (error) {
+    passwordError.textContent = error.message;
+  } finally {
+    passwordForm.querySelectorAll("button, input").forEach((control) => {
+      control.disabled = false;
+    });
+  }
+});
+
+cancelPasswordButton.addEventListener("click", () => passwordDialog.close());
 
 signOutButton.addEventListener("click", async () => {
   await signOut();
