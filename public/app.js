@@ -561,7 +561,19 @@ function closeDialog() {
 function getUnplacedBooks() {
   return catalogBooks
     .filter((book) => matchesQuickFilter(book, "unplaced"))
-    .sort(compareBooks);
+    .sort((left, right) => {
+      const byAuthor = String(left.authors ?? "").localeCompare(
+        String(right.authors ?? ""),
+        "it",
+        { sensitivity: "base", numeric: true }
+      );
+      if (byAuthor) return byAuthor;
+      return String(left.title ?? "").localeCompare(
+        String(right.title ?? ""),
+        "it",
+        { sensitivity: "base", numeric: true }
+      );
+    });
 }
 
 function openPlacementBook(book) {
