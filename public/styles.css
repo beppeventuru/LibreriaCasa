@@ -120,6 +120,18 @@ button { cursor: pointer; }
   font-weight: 750;
 }
 .quick-filters .sort-direction { min-width: 48px; justify-content: center; }
+.quick-filters .placement-start {
+  border-color: var(--amber);
+  color: white;
+  background: var(--amber);
+}
+.quick-filters .placement-start:hover { border-color: #c9832e; background: #c9832e; }
+.quick-filters .placement-start:disabled {
+  cursor: default;
+  border-color: var(--line);
+  color: var(--muted);
+  background: #ece9e1;
+}
 .quick-filters button:hover { border-color: var(--green); }
 .quick-filters button[aria-pressed="true"] {
   border-color: var(--green);
@@ -427,6 +439,30 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   pointer-events: none;
 }
 #bookForm.view-mode textarea { overflow: hidden; }
+.placement-progress {
+  margin: 0 0 .7rem;
+  padding: .65rem .75rem;
+  border-radius: 10px;
+  color: var(--green);
+  background: var(--green-soft);
+  font-size: .82rem;
+  font-weight: 800;
+}
+#bookForm.placement-mode .isbn-lookup,
+#bookForm.placement-mode .form-grid > * { display: none; }
+#bookForm.placement-mode .form-grid .title-field,
+#bookForm.placement-mode .form-grid .authors-field,
+#bookForm.placement-mode .form-grid .location-field,
+#bookForm.placement-mode .form-grid .status-field {
+  display: grid;
+  grid-column: 1 / -1;
+}
+#bookForm.placement-mode .title-field input,
+#bookForm.placement-mode .authors-field input {
+  color: var(--ink);
+  background: #f4f1e9;
+  pointer-events: none;
+}
 .bulk-dialog { width: min(720px, calc(100vw - 2rem)); padding: 1.5rem; }
 .bulk-dialog-scroll { min-width: 0; }
 .bulk-entry-heading,

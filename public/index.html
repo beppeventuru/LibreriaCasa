@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173f35">
   <title>Libreria Casa</title>
-  <link rel="stylesheet" href="styles.css?v=20260703-sort3">
+  <link rel="stylesheet" href="styles.css?v=20260703-place1">
 </head>
 <body>
   <header class="topbar">
@@ -61,6 +61,7 @@
       <button class="sort-direction" id="sortDirectionButton" type="button" aria-label="Ordine dalla A alla Z">
         A–Z
       </button>
+      <button class="placement-start" id="placementModeButton" type="button">Sistema libri</button>
       <button type="button" data-quick-filter="all" aria-pressed="true">
         Tutti <span data-quick-count>0</span>
       </button>
@@ -132,6 +133,7 @@
 
       <input id="bookId" type="hidden">
       <div class="book-form-scroll">
+        <p id="placementProgress" class="placement-progress" hidden></p>
         <section class="isbn-lookup">
           <div>
             <label for="isbnInput">Carica i dati tramite ISBN</label>
@@ -144,10 +146,10 @@
           <p id="isbnStatus" class="isbn-status" role="status" aria-live="polite"></p>
         </section>
         <div class="form-grid">
-          <label class="wide">Titolo *
+          <label class="wide title-field">Titolo *
             <input name="title" required autocomplete="off">
           </label>
-          <label class="wide">Autore o autori
+          <label class="wide authors-field">Autore o autori
             <input name="authors" placeholder="Es. Italo Calvino">
           </label>
           <label>Editore
@@ -166,7 +168,7 @@
               <button class="shelf-picker-button" id="openShelfPickerButton" type="button">Scegli scaffale</button>
             </span>
           </div>
-          <label>Sistemazione
+          <label class="status-field">Sistemazione
             <input class="automatic-status" name="reading_status" value="Da sistemare" readonly>
           </label>
           <label>Prestato a
@@ -337,6 +339,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260703-sort3"></script>
+  <script type="module" src="app.js?v=20260703-place1"></script>
 </body>
 </html>

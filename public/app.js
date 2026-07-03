@@ -22,6 +22,10 @@ const quickFilterButtons = [...document.querySelectorAll("[data-quick-filter]")]
 const dialog = document.querySelector("#bookDialog");
 const form = document.querySelector("#bookForm");
 const formSubmitButton = form.querySelector('button[type="submit"]');
+const cancelBookButton = document.querySelector("#cancelButton");
+const closeBookButton = document.querySelector("#closeDialogButton");
+const placementModeButton = document.querySelector("#placementModeButton");
+const placementProgress = document.querySelector("#placementProgress");
 const formError = document.querySelector("#formError");
 const bookId = document.querySelector("#bookId");
 const dialogTitle = document.querySelector("#dialogTitle");
@@ -104,6 +108,7 @@ let scannerSession = 0;
 let lastScannedCode = "";
 let lastScanTime = 0;
 let dialogMode = "create";
+let placementWorkflow = false;
 let currentLibrarySelection = "";
 let currentShelfSelection = "";
 let duplicateDecisionResolver = null;
@@ -183,12 +188,19 @@ function matchesQuickFilter(book, filter = activeQuickFilter) {
 }
 
 function renderQuickFilters() {
+  const unplacedCount = catalogBooks.filter(
+    (book) => matchesQuickFilter(book, "unplaced")
+  ).length;
   quickFilterButtons.forEach((button) => {
     const filter = button.dataset.quickFilter;
     const total = catalogBooks.filter((book) => matchesQuickFilter(book, filter)).length;
     button.querySelector("[data-quick-count]").textContent = total;
     button.setAttribute("aria-pressed", String(filter === activeQuickFilter));
   });
+  placementModeButton.disabled = unplacedCount === 0;
+  placementModeButton.textContent = unplacedCount
+    ? `Sistema libri ${unplacedCount}`
+    : "Tutto sistemato";
 }
 
 function compareBooks(left, right) {
@@ -508,7 +520,15 @@ function setDialogMode(mode) {
   });
 }
 
+function resetPlacementUi() {
+  form.classList.remove("placement-mode");
+  placementProgress.hidden = true;
+  cancelBookButton.textContent = "Annulla";
+  formSubmitButton.textContent = "Salva libro";
+}
+
 function openDialog(book = null) {
+  resetPlacementUi();
   form.reset();
   formError.textContent = "";
   isbnStatus.textContent = "";
@@ -531,7 +551,44 @@ function openDialog(book = null) {
 }
 
 function closeDialog() {
+  placementWorkflow = false;
+  resetPlacementUi();
   dialog.close();
+}
+
+function getUnplacedBooks() {
+  return catalogBooks
+    .filter((book) => matchesQuickFilter(book, "unplaced"))
+    .sort(compareBooks);
+}
+
+function openPlacementBook(book) {
+  openDialog(book);
+  setDialogMode("edit");
+  form.classList.add("placement-mode");
+  dialogTitle.textContent = "Sistema libro";
+  editBookButton.hidden = true;
+  deleteButton.hidden = true;
+  form.elements.title.readOnly = true;
+  form.elements.authors.readOnly = true;
+  placementProgress.hidden = false;
+  const remaining = getUnplacedBooks().length;
+  placementProgress.textContent = `${remaining} ${
+    remaining === 1 ? "libro ancora da sistemare" : "libri ancora da sistemare"
+  }`;
+  cancelBookButton.textContent = "Esci";
+  formSubmitButton.textContent = "Salva e continua";
+  document.querySelector("#openShelfPickerButton").focus();
+}
+
+function startPlacementWorkflow() {
+  const pendingBooks = getUnplacedBooks();
+  if (!pendingBooks.length) return;
+  placementWorkflow = true;
+  activeQuickFilter = "unplaced";
+  searchInput.value = "";
+  applyCatalogView();
+  openPlacementBook(pendingBooks[0]);
 }
 
 function cleanIsbn(value) {
@@ -1228,9 +1285,24 @@ form.addEventListener("submit", async (event) => {
       }
     }
 
+    const continuePlacement = placementWorkflow;
     await saveBook(payload, id);
-    closeDialog();
-    await loadBooks(searchInput.value);
+    if (!continuePlacement) {
+      closeDialog();
+      await loadBooks(searchInput.value);
+      return;
+    }
+
+    dialog.close();
+    await loadBooks("");
+    const pendingBooks = getUnplacedBooks();
+    if (pendingBooks.length) {
+      openPlacementBook(pendingBooks[0]);
+    } else {
+      placementWorkflow = false;
+      resetPlacementUi();
+      applyCatalogView();
+    }
   } catch (error) {
     formError.textContent = error.message;
   } finally {
@@ -1396,8 +1468,9 @@ editBookButton.addEventListener("click", () => {
   setDialogMode("edit");
   form.elements.title.focus();
 });
-document.querySelector("#closeDialogButton").addEventListener("click", closeDialog);
-document.querySelector("#cancelButton").addEventListener("click", closeDialog);
+placementModeButton.addEventListener("click", startPlacementWorkflow);
+closeBookButton.addEventListener("click", closeDialog);
+cancelBookButton.addEventListener("click", closeDialog);
 closeBulkButton.addEventListener("click", closeBulkDialog);
 cancelBulkButton.addEventListener("click", closeBulkDialog);
 startBulkButton.addEventListener("click", importMultipleIsbns);
@@ -1428,6 +1501,10 @@ bulkDialog.addEventListener("cancel", (event) => {
 bulkDialog.addEventListener("close", () => stopBarcodeScanner());
 dialog.addEventListener("click", (event) => {
   if (event.target === dialog) closeDialog();
+});
+dialog.addEventListener("cancel", () => {
+  placementWorkflow = false;
+  resetPlacementUi();
 });
 bulkDialog.addEventListener("click", (event) => {
   if (event.target === bulkDialog) closeBulkDialog();
