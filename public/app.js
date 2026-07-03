@@ -1297,7 +1297,7 @@ searchField.addEventListener("change", () => {
   applyCatalogView();
 });
 
-sortField.addEventListener("change", applyCatalogView);
+sortField.addEventListener("change", () => applyCatalogView());
 sortDirectionButton.addEventListener("click", () => {
   sortAscending = !sortAscending;
   applyCatalogView();
