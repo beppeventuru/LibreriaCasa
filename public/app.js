@@ -222,10 +222,6 @@ function matchesQuickFilter(book, filter = activeQuickFilter) {
     return !parseLibraryLocation(book.location).library
       || String(book.reading_status ?? "") === "Da sistemare";
   }
-  if (filter === "loaned") return Boolean(String(book.loaned_to ?? "").trim());
-  if (libraryNames.includes(filter)) {
-    return parseLibraryLocation(book.location).library === filter;
-  }
   return true;
 }
 
@@ -1817,6 +1813,6 @@ initializeApp().catch((error) => {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=20260703-pwa3").catch(() => {});
+    navigator.serviceWorker.register("./service-worker.js?v=20260703-pwa4").catch(() => {});
   });
 }

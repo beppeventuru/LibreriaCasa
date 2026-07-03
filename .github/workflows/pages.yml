@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -18,11 +19,12 @@ jobs:
     steps:
       - name: Scarica il progetto
         uses: actions/checkout@v6
-      - name: Aggiorna il ramo gh-pages
+      - name: Pubblica con tentativi automatici
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           publish_dir="$(mktemp -d)"
           cp -a public/. "$publish_dir/"
           touch "$publish_dir/.nojekyll"
@@ -32,7 +34,51 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add --all
-          git commit -m "Pubblica ${GITHUB_SHA}"
-          git push --force \
-            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            gh-pages
+
+          publish_attempt() {
+            local attempt="$1"
+            git commit --allow-empty -m "Pubblica ${GITHUB_SHA} - tentativo ${attempt}" >&2
+            git push --force \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              gh-pages >&2
+            git rev-parse HEAD
+          }
+
+          wait_for_pages() {
+            local published_sha="$1"
+            local result=""
+            local run_status=""
+            local conclusion=""
+
+            for check in $(seq 1 12); do
+              result="$(gh run list \
+                --repo "$GITHUB_REPOSITORY" \
+                --workflow pages-build-deployment \
+                --limit 20 \
+                --json headSha,status,conclusion \
+                --jq ".[] | select(.headSha == \"${published_sha}\") | [.status, .conclusion] | @tsv" \
+                | head -n 1)"
+
+              if [ -n "$result" ]; then
+                IFS=$'\t' read -r run_status conclusion <<< "$result"
+                if [ "$run_status" = "completed" ]; then
+                  [ "$conclusion" = "success" ]
+                  return
+                fi
+              fi
+              sleep 3
+            done
+            return 1
+          }
+
+          for attempt in 1 2 3; do
+            published_sha="$(publish_attempt "$attempt")"
+            if wait_for_pages "$published_sha"; then
+              echo "GitHub Pages pubblicato al tentativo ${attempt}."
+              exit 0
+            fi
+            echo "Tentativo ${attempt} non riuscito."
+          done
+
+          echo "GitHub Pages non è stato pubblicato dopo tre tentativi."
+          exit 1
