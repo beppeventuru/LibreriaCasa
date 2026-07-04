@@ -96,6 +96,8 @@ const backupFileInput = document.querySelector("#backupFileInput");
 const backupStatus = document.querySelector("#backupStatus");
 const duplicateDialog = document.querySelector("#duplicateDialog");
 const duplicateMessage = document.querySelector("#duplicateMessage");
+const duplicateCover = document.querySelector("#duplicateCover");
+const duplicateCoverPlaceholder = document.querySelector("#duplicateCoverPlaceholder");
 const closeDuplicateButton = document.querySelector("#closeDuplicateButton");
 const rejectDuplicateButton = document.querySelector("#rejectDuplicateButton");
 const acceptDuplicateButton = document.querySelector("#acceptDuplicateButton");
@@ -800,9 +802,18 @@ function settleDuplicateDecision(accepted) {
   if (resolve) resolve(accepted);
 }
 
-function confirmAdditionalCopy({ title, isbn, existingCount }) {
+function confirmAdditionalCopy({ title, isbn, existingCount, coverUrl = "" }) {
   if (duplicateDecisionResolver) settleDuplicateDecision(false);
   const copies = existingCount === 1 ? "una copia" : `${existingCount} copie`;
+  const imageUrl = String(coverUrl ?? "").trim();
+  duplicateCover.hidden = !imageUrl;
+  duplicateCoverPlaceholder.hidden = Boolean(imageUrl);
+  duplicateCover.alt = imageUrl ? `Copertina di ${title || "questo libro"}` : "";
+  if (imageUrl) {
+    duplicateCover.src = imageUrl;
+  } else {
+    duplicateCover.removeAttribute("src");
+  }
   duplicateMessage.textContent =
     `Il catalogo contiene già ${copies} di “${title || "questo libro"}” con ISBN ${isbn}.`;
   acceptDuplicateButton.textContent = `Aggiungi la ${existingCount + 1}ª copia`;
@@ -1405,7 +1416,8 @@ async function importMultipleIsbns() {
         const accepted = await confirmAdditionalCopy({
           title: matchingBooks[0].title,
           isbn,
-          existingCount: matchingBooks.length
+          existingCount: matchingBooks.length,
+          coverUrl: matchingBooks[0].cover_url
         });
         if (!accepted) {
           notImported += 1;
@@ -1473,7 +1485,8 @@ form.addEventListener("submit", async (event) => {
         const accepted = await confirmAdditionalCopy({
           title: matchingBooks[0].title || payload.title,
           isbn,
-          existingCount: matchingBooks.length
+          existingCount: matchingBooks.length,
+          coverUrl: matchingBooks[0].cover_url || payload.cover_url
         });
         if (!accepted) {
           formError.textContent = "Salvataggio annullato: il libro era già presente.";
@@ -1721,6 +1734,10 @@ backupFileInput.addEventListener("change", () => {
 rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 closeDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
+duplicateCover.addEventListener("error", () => {
+  duplicateCover.hidden = true;
+  duplicateCoverPlaceholder.hidden = false;
+});
 document.querySelector("#openShelfPickerButton").addEventListener("click", openShelfPicker);
 loanBookButton.addEventListener("click", async () => {
   const opening = loanManager.hidden;

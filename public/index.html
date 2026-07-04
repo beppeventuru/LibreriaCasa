@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=20260703-pwa1">
   <link rel="icon" href="app-icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://books.google.com" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20260704-stickybar1">
+  <link rel="stylesheet" href="styles.css?v=20260704-duplicatecover1">
 </head>
 <body>
   <div class="app-header">
@@ -326,14 +326,16 @@
 
   <dialog id="duplicateDialog" class="duplicate-dialog">
     <div class="dialog-header">
-      <div>
-        <p class="eyebrow">Possibile doppione</p>
-        <h2>Questo libro è già presente</h2>
-      </div>
+      <p class="eyebrow">Possibile doppione</p>
       <button class="icon-button" id="closeDuplicateButton" type="button" aria-label="Chiudi">×</button>
     </div>
 
     <div class="duplicate-dialog-scroll">
+      <div class="duplicate-cover" aria-label="Copertina del libro">
+        <img id="duplicateCover" alt="" hidden>
+        <span id="duplicateCoverPlaceholder" aria-hidden="true">▥</span>
+      </div>
+      <h2>Questo libro è già presente</h2>
       <p id="duplicateMessage"></p>
       <p>Potrebbe essere un errore oppure un’altra copia fisica del volume.</p>
     </div>
@@ -399,6 +401,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260704-dialogs1"></script>
+  <script type="module" src="app.js?v=20260704-duplicatecover1"></script>
 </body>
 </html>
