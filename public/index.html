@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=20260703-pwa1">
   <link rel="icon" href="app-icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://books.google.com" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20260704-cover1">
+  <link rel="stylesheet" href="styles.css?v=20260704-dialogs1">
 </head>
 <body>
   <header class="topbar">
@@ -298,21 +298,24 @@
       <button class="icon-button" id="closeBackupButton" type="button" aria-label="Chiudi">×</button>
     </div>
 
-    <div class="backup-options">
-      <section>
-        <h3>Esporta il catalogo</h3>
-        <p>Scarica un backup completo dei libri, comprese collocazioni, prestiti, tag e note.</p>
-        <button class="primary" id="exportBackupButton" type="button">Scarica backup</button>
-      </section>
-      <section>
-        <h3>Importa un backup</h3>
-        <p>Ripristina un file creato da Libreria Casa. Le copie già presenti non verranno duplicate.</p>
-        <input id="backupFileInput" type="file" accept=".json,application/json" hidden>
-        <button class="secondary" id="importBackupButton" type="button">Scegli file</button>
-      </section>
+    <div class="backup-dialog-scroll">
+      <div class="backup-options">
+        <section>
+          <h3>Esporta il catalogo</h3>
+          <p>Scarica un backup completo dei libri, comprese collocazioni, prestiti, tag e note.</p>
+          <button class="primary" id="exportBackupButton" type="button">Scarica backup</button>
+        </section>
+        <section>
+          <h3>Importa un backup</h3>
+          <p>Ripristina un file creato da Libreria Casa. Le copie già presenti non verranno duplicate.</p>
+          <input id="backupFileInput" type="file" accept=".json,application/json" hidden>
+          <button class="secondary" id="importBackupButton" type="button">Scegli file</button>
+        </section>
+      </div>
+
+      <p id="backupStatus" class="backup-status" role="status" aria-live="polite"></p>
     </div>
 
-    <p id="backupStatus" class="backup-status" role="status" aria-live="polite"></p>
     <div class="dialog-actions">
       <span class="spacer"></span>
       <button class="secondary" id="dismissBackupButton" type="button">Chiudi</button>
@@ -320,10 +323,19 @@
   </dialog>
 
   <dialog id="duplicateDialog" class="duplicate-dialog">
-    <p class="eyebrow">Possibile doppione</p>
-    <h2>Questo libro è già presente</h2>
-    <p id="duplicateMessage"></p>
-    <p>Potrebbe essere un errore oppure un’altra copia fisica del volume.</p>
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Possibile doppione</p>
+        <h2>Questo libro è già presente</h2>
+      </div>
+      <button class="icon-button" id="closeDuplicateButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="duplicate-dialog-scroll">
+      <p id="duplicateMessage"></p>
+      <p>Potrebbe essere un errore oppure un’altra copia fisica del volume.</p>
+    </div>
+
     <div class="dialog-actions">
       <button class="secondary" id="rejectDuplicateButton" type="button">È un errore</button>
       <span class="spacer"></span>
@@ -385,6 +397,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260704-cover1"></script>
+  <script type="module" src="app.js?v=20260704-dialogs1"></script>
 </body>
 </html>

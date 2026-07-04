@@ -723,7 +723,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   padding: 1.3rem;
 }
 .duplicate-dialog h2 { margin: 0; font: 1.8rem Georgia, serif; }
-.duplicate-dialog > p:not(.eyebrow) { margin: .7rem 0 0; color: var(--muted); line-height: 1.5; }
+.duplicate-dialog-scroll > p { margin: .7rem 0 0; color: var(--muted); line-height: 1.5; }
 .duplicate-dialog #duplicateMessage { color: var(--ink); font-weight: 750; }
 .shelf-dialog { width: min(760px, calc(100vw - 2rem)); padding: 1rem 1.25rem; overflow: hidden; }
 .library-selector {
@@ -836,7 +836,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   }
   .auth-dialog form { padding: 1.15rem; }
   #bookDialog,
-  .shelf-dialog {
+  .shelf-dialog,
+  .backup-dialog,
+  .duplicate-dialog {
     inset: 0;
     width: 100vw;
     max-width: 100vw;
@@ -940,14 +942,39 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .bulk-dialog textarea { height: min(20dvh, 145px); min-height: 112px; }
   .bulk-result { grid-template-columns: 1fr; gap: .3rem; }
   .bulk-manual-button { justify-self: start; margin-top: .25rem; }
-  .backup-dialog, .duplicate-dialog {
-    width: 100%;
-    padding: 1rem;
+  .backup-dialog,
+  .duplicate-dialog {
+    padding: .8rem;
+    overflow: hidden;
+  }
+  .backup-dialog[open],
+  .duplicate-dialog[open] { display: flex; flex-direction: column; }
+  .backup-dialog > .dialog-header,
+  .backup-dialog > .dialog-actions,
+  .duplicate-dialog > .dialog-header,
+  .duplicate-dialog > .dialog-actions { flex: 0 0 auto; }
+  .backup-dialog > .dialog-header,
+  .duplicate-dialog > .dialog-header { margin-bottom: .55rem; }
+  .backup-dialog-scroll,
+  .duplicate-dialog-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .backup-options { grid-template-columns: 1fr; }
   .backup-options section { padding: .85rem; }
-  .duplicate-dialog .dialog-actions { align-items: stretch; flex-direction: column-reverse; }
-  .duplicate-dialog .dialog-actions .spacer { display: none; }
+  .backup-dialog > .dialog-actions,
+  .duplicate-dialog > .dialog-actions {
+    position: static;
+    bottom: auto;
+    margin: 0;
+    padding: .7rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .backup-dialog > .dialog-actions button,
+  .duplicate-dialog > .dialog-actions button { min-height: 46px; }
+  .duplicate-dialog > .dialog-actions button { padding-inline: .65rem; }
   .shelf-dialog {
     overflow: hidden;
     padding: .8rem;

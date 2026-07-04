@@ -96,6 +96,7 @@ const backupFileInput = document.querySelector("#backupFileInput");
 const backupStatus = document.querySelector("#backupStatus");
 const duplicateDialog = document.querySelector("#duplicateDialog");
 const duplicateMessage = document.querySelector("#duplicateMessage");
+const closeDuplicateButton = document.querySelector("#closeDuplicateButton");
 const rejectDuplicateButton = document.querySelector("#rejectDuplicateButton");
 const acceptDuplicateButton = document.querySelector("#acceptDuplicateButton");
 const loanManager = document.querySelector("#loanManager");
@@ -1718,6 +1719,7 @@ backupFileInput.addEventListener("change", () => {
   if (file) importBackupFile(file);
 });
 rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
+closeDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
 document.querySelector("#openShelfPickerButton").addEventListener("click", openShelfPicker);
 loanBookButton.addEventListener("click", async () => {
