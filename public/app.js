@@ -587,6 +587,18 @@ function resetPlacementUi() {
   formSubmitButton.textContent = "Salva libro";
 }
 
+function updateDialogCover(book = null) {
+  const coverUrl = String(book?.cover_url ?? "").trim();
+  placementCover.hidden = !coverUrl;
+  placementCoverPlaceholder.hidden = Boolean(coverUrl);
+  placementCover.alt = coverUrl ? `Copertina di ${book.title}` : "";
+  if (coverUrl) {
+    placementCover.src = coverUrl;
+  } else {
+    placementCover.removeAttribute("src");
+  }
+}
+
 function openDialog(book = null) {
   resetPlacementUi();
   form.reset();
@@ -604,6 +616,7 @@ function openDialog(book = null) {
   } else {
     form.elements.language.value = "Italiano";
   }
+  updateDialogCover(book);
   updatePlacementStatus();
   setDialogMode(book ? "view" : "create");
   dialog.showModal();
@@ -713,11 +726,6 @@ function openPlacementBook(book) {
   placementProgress.textContent = `${remaining} ${
     remaining === 1 ? "libro ancora da sistemare" : "libri ancora da sistemare"
   }`;
-  const coverUrl = String(book.cover_url ?? "").trim();
-  placementCover.hidden = !coverUrl;
-  placementCoverPlaceholder.hidden = Boolean(coverUrl);
-  placementCover.alt = coverUrl ? `Copertina di ${book.title}` : "";
-  placementCover.src = coverUrl;
   cancelBookButton.textContent = "Esci";
   formSubmitButton.textContent = "Salva e continua";
   document.querySelector("#openShelfPickerButton").focus();

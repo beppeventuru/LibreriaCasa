@@ -425,6 +425,7 @@ dialog::backdrop { background: rgba(10, 24, 20, .58); backdrop-filter: blur(3px)
   grid-auto-flow: dense;
   gap: .6rem .75rem;
 }
+.placement-cover-field { display: none; }
 .form-grid label, .form-field { display: grid; gap: .22rem; color: #53605b; font-size: .75rem; font-weight: 750; }
 .form-grid .wide { grid-column: span 2; }
 .location-controls { display: flex; gap: .45rem; }
@@ -495,6 +496,30 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   pointer-events: none;
 }
 #bookForm.view-mode textarea { overflow: hidden; }
+#bookForm.view-mode .form-grid {
+  grid-template-columns: 160px repeat(3, minmax(0, 1fr));
+}
+#bookForm.view-mode .form-grid .placement-cover-field {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1 / 4;
+  place-items: center;
+  width: 160px;
+  height: 248px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f4f1e9;
+}
+#bookForm.view-mode .placement-cover-field img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+#bookForm.view-mode .placement-cover-field span {
+  color: var(--green);
+  font-size: 2rem;
+}
 .placement-progress {
   margin: 0 0 .7rem;
   padding: .65rem .75rem;
@@ -848,6 +873,22 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .isbn-controls input { min-width: 0; }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
   .form-grid .wide, .form-grid .location-field { grid-column: 1/-1; }
+  #bookForm.view-mode .form-grid {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+  #bookForm.view-mode .form-grid .placement-cover-field {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    width: 88px;
+    height: 136px;
+  }
+  #bookForm.view-mode .form-grid .title-field,
+  #bookForm.view-mode .form-grid .publisher-field {
+    grid-column: 2;
+  }
+  #bookForm.view-mode .form-grid .authors-field {
+    grid-column: 1 / -1;
+  }
   .location-controls { flex-direction: row; }
   .dialog-actions { position: sticky; bottom: -1rem; padding: .8rem 0 1rem; background: var(--surface); }
   #bookForm > .dialog-actions {
