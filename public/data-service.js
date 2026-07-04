@@ -20,6 +20,23 @@ const searchableFields = [
 ];
 
 let supabasePromise;
+const searchIndex = new WeakMap();
+
+function normalizeSearchValue(value) {
+  return String(value ?? "").toLocaleLowerCase("it");
+}
+
+function searchableBook(book) {
+  let indexed = searchIndex.get(book);
+  if (!indexed) {
+    indexed = Object.fromEntries(
+      searchableFields.map((name) => [name, normalizeSearchValue(book[name])])
+    );
+    indexed.all = searchableFields.map((name) => indexed[name]).join("\n");
+    searchIndex.set(book, indexed);
+  }
+  return indexed;
+}
 
 async function localRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -61,14 +78,10 @@ async function getSupabase() {
 }
 
 export function filterBooks(books, query, field) {
-  const needle = String(query || "").trim().toLocaleLowerCase("it");
+  const needle = normalizeSearchValue(query).trim();
   if (!needle) return books;
-  const fields = field === "all" || !searchableFields.includes(field)
-    ? searchableFields
-    : [field];
-  return books.filter((book) => fields.some((name) =>
-    String(book[name] ?? "").toLocaleLowerCase("it").includes(needle)
-  ));
+  const selectedField = searchableFields.includes(field) ? field : "all";
+  return books.filter((book) => searchableBook(book)[selectedField].includes(needle));
 }
 
 export async function getSession() {

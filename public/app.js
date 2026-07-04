@@ -17,7 +17,7 @@ import {
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260703-backup1";
+} from "./data-service.js?v=20260704-opt1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
@@ -124,7 +124,13 @@ const BOOK_DATA_FIELDS = [
   "cover_url"
 ];
 
+const italianCollator = new Intl.Collator("it", {
+  sensitivity: "base",
+  numeric: true
+});
+
 let catalogBooks = [];
+let catalogBookById = new Map();
 let books = [];
 let searchTimer;
 let activeQuickFilter = "all";
@@ -226,15 +232,19 @@ function matchesQuickFilter(book, filter = activeQuickFilter) {
 }
 
 function renderQuickFilters() {
-  const unplacedCount = catalogBooks.filter(
-    (book) => matchesQuickFilter(book, "unplaced")
-  ).length;
+  const totals = {
+    all: catalogBooks.length,
+    unplaced: catalogBooks.reduce(
+      (total, book) => total + Number(matchesQuickFilter(book, "unplaced")),
+      0
+    )
+  };
   quickFilterButtons.forEach((button) => {
     const filter = button.dataset.quickFilter;
-    const total = catalogBooks.filter((book) => matchesQuickFilter(book, filter)).length;
-    button.querySelector("[data-quick-count]").textContent = total;
+    button.querySelector("[data-quick-count]").textContent = totals[filter] ?? 0;
     button.setAttribute("aria-pressed", String(filter === activeQuickFilter));
   });
+  const unplacedCount = totals.unplaced;
   placementModeButton.disabled = unplacedCount === 0;
   placementModeButton.textContent = unplacedCount
     ? `Sistema libri ${unplacedCount}`
@@ -254,11 +264,7 @@ function compareBooks(left, right) {
   const rightValue = String(right[field] ?? "").trim();
   if (!leftValue && rightValue) return 1;
   if (leftValue && !rightValue) return -1;
-  return leftValue.localeCompare(
-    rightValue,
-    "it",
-    { sensitivity: "base", numeric: true }
-  ) * (sortAscending ? 1 : -1);
+  return italianCollator.compare(leftValue, rightValue) * (sortAscending ? 1 : -1);
 }
 
 function updateSortDirection() {
@@ -286,6 +292,9 @@ function applyCatalogView(query = searchInput.value, field = searchField.value) 
 
 async function loadBooks(query = "", field = searchField.value) {
   catalogBooks = await listBooks();
+  catalogBookById = new Map(
+    catalogBooks.map((book) => [String(book.id), book])
+  );
   applyCatalogView(query, field);
 }
 
@@ -316,9 +325,11 @@ function renderBooks() {
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   for (const book of books) {
     const card = cardTemplate.content.cloneNode(true);
     const button = card.querySelector(".card-button");
+    button.dataset.bookId = String(book.id);
     const image = card.querySelector("img");
     const placeholder = card.querySelector(".cover-placeholder");
     card.querySelector(".book-title").textContent = book.title;
@@ -352,11 +363,11 @@ function renderBooks() {
       image.addEventListener("error", () => {
         image.hidden = true;
         placeholder.hidden = false;
-      });
+      }, { once: true });
     }
-    button.addEventListener("click", () => openDialog(book));
-    grid.append(card);
+    fragment.append(card);
   }
+  grid.append(fragment);
 }
 
 function createBadge(text, kind) {
@@ -1539,6 +1550,13 @@ deleteButton.addEventListener("click", async () => {
 searchInput.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => applyCatalogView(), 120);
+});
+
+grid.addEventListener("click", (event) => {
+  const button = event.target.closest(".card-button");
+  if (!button || !grid.contains(button)) return;
+  const book = catalogBookById.get(button.dataset.bookId);
+  if (book) openDialog(book);
 });
 
 searchField.addEventListener("change", () => {

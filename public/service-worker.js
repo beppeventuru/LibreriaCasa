@@ -1,10 +1,10 @@
-const CACHE_NAME = "libreria-casa-v4";
+const CACHE_NAME = "libreria-casa-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=20260703-authcenter1",
-  "./app.js?v=20260703-stable1",
-  "./data-service.js?v=20260703-backup1",
+  "./app.js?v=20260704-opt1",
+  "./data-service.js?v=20260704-opt1",
   "./config.js",
   "./manifest.webmanifest",
   "./app-icon.svg"
@@ -33,20 +33,30 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
 
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  const refresh = fetch(request).then((response) => {
+    if (response.ok) {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+    }
+    return response;
+  });
+  event.waitUntil(refresh.catch(() => undefined));
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(request);
-        if (cached) return cached;
-        if (request.mode === "navigate") return caches.match("./index.html");
-        throw new Error("Risorsa non disponibile offline");
-      })
+    caches.match(request).then((cached) => cached || refresh)
   );
 });
