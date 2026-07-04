@@ -25,10 +25,12 @@ body {
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 
-.topbar {
+.app-header {
   position: sticky;
   top: 0;
   z-index: 100;
+}
+.topbar {
   min-height: 72px;
   display: flex;
   align-items: center;
@@ -68,7 +70,7 @@ button { cursor: pointer; }
   font-family: Georgia, serif;
 }
 .quick-filter-shell {
-  overflow-x: auto;
+  overflow-x: hidden;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 253, 248, .94);
   scrollbar-width: none;
@@ -76,8 +78,8 @@ button { cursor: pointer; }
 .quick-filter-shell::-webkit-scrollbar { display: none; }
 .quick-filters {
   display: flex;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
   justify-content: center;
   gap: .45rem;
   padding: .55rem 5vw;
@@ -810,12 +812,42 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .wide-label { display: none; }
   .compact-label { display: inline; }
   .quick-filters {
-    min-width: max-content;
-    justify-content: flex-start;
-    padding: .5rem 1rem;
+    display: grid;
+    grid-template-columns:
+      minmax(76px, 1.1fr)
+      minmax(44px, .55fr)
+      minmax(98px, 1.25fr)
+      minmax(62px, .8fr);
+    width: 100%;
+    min-width: 0;
+    justify-content: stretch;
+    gap: .3rem;
+    padding: .5rem;
   }
-  .quick-filters button { min-height: 32px; padding: .35rem .65rem; font-size: .74rem; }
-  .quick-sort { min-height: 32px; padding: 0 .55rem; }
+  .quick-filters button {
+    min-width: 0;
+    min-height: 32px;
+    justify-content: center;
+    padding: .35rem;
+    font-size: .72rem;
+  }
+  .quick-sort {
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 .4rem;
+  }
+  .quick-sort > span { display: none; }
+  .quick-sort select {
+    width: 100%;
+    min-width: 0;
+    font-size: .72rem;
+  }
+  .quick-filters .sort-direction { min-width: 0; }
+  .quick-filters [data-quick-count] {
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+    padding: 0 .2rem;
+  }
   main { width: min(100% - 2rem, 1180px); padding: 2.8rem 0; }
   .hero { margin-bottom: 2rem; }
   .toolbar { align-items: stretch; flex-direction: column; }
