@@ -1,4 +1,5 @@
 import {
+  clearCatalog,
   filterBooks,
   getSession,
   importBookLoans,
@@ -17,7 +18,7 @@ import {
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260704-opt1";
+} from "./data-service.js?v=20260706-settings1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");
@@ -85,15 +86,23 @@ const passwordMessage = document.querySelector("#passwordMessage");
 const cancelPasswordButton = document.querySelector("#cancelPasswordButton");
 const signOutButton = document.querySelector("#signOutButton");
 const installAppButton = document.querySelector("#installAppButton");
+const installAppStatus = document.querySelector("#installAppStatus");
 const importLocalButton = document.querySelector("#importLocalButton");
-const backupDialog = document.querySelector("#backupDialog");
-const backupButton = document.querySelector("#backupButton");
-const closeBackupButton = document.querySelector("#closeBackupButton");
-const dismissBackupButton = document.querySelector("#dismissBackupButton");
+const settingsDialog = document.querySelector("#settingsDialog");
+const settingsButton = document.querySelector("#settingsButton");
+const closeSettingsButton = document.querySelector("#closeSettingsButton");
+const dismissSettingsButton = document.querySelector("#dismissSettingsButton");
 const exportBackupButton = document.querySelector("#exportBackupButton");
 const importBackupButton = document.querySelector("#importBackupButton");
 const backupFileInput = document.querySelector("#backupFileInput");
 const backupStatus = document.querySelector("#backupStatus");
+const showDeleteCatalogButton = document.querySelector("#showDeleteCatalogButton");
+const deleteCatalogConfirmation = document.querySelector("#deleteCatalogConfirmation");
+const deleteCatalogPhrase = document.querySelector("#deleteCatalogPhrase");
+const cancelDeleteCatalogButton = document.querySelector("#cancelDeleteCatalogButton");
+const deleteCatalogButton = document.querySelector("#deleteCatalogButton");
+const deleteCatalogSummary = document.querySelector("#deleteCatalogSummary");
+const deleteCatalogStatus = document.querySelector("#deleteCatalogStatus");
 const duplicateDialog = document.querySelector("#duplicateDialog");
 const duplicateMessage = document.querySelector("#duplicateMessage");
 const duplicateCover = document.querySelector("#duplicateCover");
@@ -140,6 +149,7 @@ let activeQuickFilter = "all";
 let sortAscending = true;
 let bulkRunning = false;
 let backupRunning = false;
+let catalogDeleteRunning = false;
 let scannerControls = null;
 let scannerTrack = null;
 let scannerLibraryPromise = null;
@@ -156,12 +166,12 @@ let deferredInstallPrompt = null;
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
-  installAppButton.hidden = false;
+  syncInstallOption();
 });
 
 window.addEventListener("appinstalled", () => {
   deferredInstallPrompt = null;
-  installAppButton.hidden = true;
+  syncInstallOption();
 });
 
 function makeShelfPositions(group, count, x, width, y = 40, step = 92, height = 72) {
@@ -832,18 +842,80 @@ function setBackupBusy(busy) {
   backupRunning = busy;
   exportBackupButton.disabled = busy;
   importBackupButton.disabled = busy;
-  closeBackupButton.disabled = busy;
-  dismissBackupButton.disabled = busy;
+  closeSettingsButton.disabled = busy;
+  dismissSettingsButton.disabled = busy;
 }
 
-function openBackupDialog() {
+function isAppInstalled() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || window.navigator.standalone === true;
+}
+
+function syncInstallOption() {
+  if (isAppInstalled()) {
+    installAppStatus.textContent = "Libreria Casa è già installata su questo dispositivo.";
+    installAppButton.textContent = "Già installata";
+    installAppButton.disabled = true;
+    return;
+  }
+  if (deferredInstallPrompt) {
+    installAppStatus.textContent = "Installa Libreria Casa sul dispositivo per aprirla come una normale app.";
+    installAppButton.textContent = "Installa applicazione";
+    installAppButton.disabled = false;
+    return;
+  }
+  installAppStatus.textContent = "L’installazione non è disponibile in questo browser o dispositivo.";
+  installAppButton.textContent = "Installazione non disponibile";
+  installAppButton.disabled = true;
+}
+
+function resetDeleteCatalogConfirmation() {
+  deleteCatalogConfirmation.hidden = true;
+  deleteCatalogPhrase.value = "";
+  deleteCatalogButton.disabled = true;
+  deleteCatalogStatus.textContent = "";
+}
+
+function openSettingsDialog() {
   backupFileInput.value = "";
   setBackupStatus("");
-  backupDialog.showModal();
+  resetDeleteCatalogConfirmation();
+  deleteCatalogSummary.textContent = catalogBooks.length
+    ? `Elimina definitivamente ${catalogBooks.length} ${catalogBooks.length === 1 ? "libro" : "libri"} e lo storico dei prestiti. L’account resterà attivo.`
+    : "Il catalogo è già vuoto. L’account e le impostazioni resteranno attivi.";
+  showDeleteCatalogButton.disabled = catalogBooks.length === 0;
+  syncInstallOption();
+  settingsDialog.showModal();
 }
 
-function closeBackupDialog() {
-  if (!backupRunning) backupDialog.close();
+function closeSettingsDialog() {
+  if (!backupRunning && !catalogDeleteRunning) settingsDialog.close();
+}
+
+async function deleteEntireCatalog() {
+  if (deleteCatalogPhrase.value !== "ELIMINA TUTTO") return;
+  catalogDeleteRunning = true;
+  deleteCatalogStatus.textContent = "Eliminazione del catalogo in corso…";
+  deleteCatalogButton.disabled = true;
+  cancelDeleteCatalogButton.disabled = true;
+  closeSettingsButton.disabled = true;
+  dismissSettingsButton.disabled = true;
+
+  try {
+    await clearCatalog();
+    searchInput.value = "";
+    activeQuickFilter = "all";
+    await loadBooks();
+    resetDeleteCatalogConfirmation();
+    settingsDialog.close();
+  } catch (error) {
+    deleteCatalogStatus.textContent = `Eliminazione non riuscita: ${error.message}`;
+  } finally {
+    catalogDeleteRunning = false;
+    cancelDeleteCatalogButton.disabled = false;
+    closeSettingsButton.disabled = false;
+    dismissSettingsButton.disabled = false;
+  }
 }
 
 async function exportBackup() {
@@ -1687,7 +1759,7 @@ installAppButton.addEventListener("click", async () => {
   deferredInstallPrompt.prompt();
   await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
-  installAppButton.hidden = true;
+  syncInstallOption();
 });
 
 signOutButton.addEventListener("click", async () => {
@@ -1722,15 +1794,28 @@ importLocalButton.addEventListener("click", async () => {
 document.querySelector("#addBookButton").addEventListener("click", () => openDialog());
 document.querySelector("#emptyAddButton").addEventListener("click", () => openDialog());
 document.querySelector("#bulkImportButton").addEventListener("click", openBulkDialog);
-backupButton.addEventListener("click", openBackupDialog);
-closeBackupButton.addEventListener("click", closeBackupDialog);
-dismissBackupButton.addEventListener("click", closeBackupDialog);
+settingsButton.addEventListener("click", openSettingsDialog);
+closeSettingsButton.addEventListener("click", closeSettingsDialog);
+dismissSettingsButton.addEventListener("click", closeSettingsDialog);
 exportBackupButton.addEventListener("click", exportBackup);
 importBackupButton.addEventListener("click", () => backupFileInput.click());
 backupFileInput.addEventListener("change", () => {
   const [file] = backupFileInput.files;
   if (file) importBackupFile(file);
 });
+showDeleteCatalogButton.addEventListener("click", () => {
+  deleteCatalogConfirmation.hidden = false;
+  showDeleteCatalogButton.disabled = true;
+  deleteCatalogPhrase.focus();
+});
+cancelDeleteCatalogButton.addEventListener("click", () => {
+  resetDeleteCatalogConfirmation();
+  showDeleteCatalogButton.disabled = catalogBooks.length === 0;
+});
+deleteCatalogPhrase.addEventListener("input", () => {
+  deleteCatalogButton.disabled = deleteCatalogPhrase.value !== "ELIMINA TUTTO";
+});
+deleteCatalogButton.addEventListener("click", deleteEntireCatalog);
 rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 closeDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
 acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
@@ -1831,11 +1916,11 @@ shelfDialog.addEventListener("click", (event) => {
   if (event.target === shelfDialog) closeShelfPicker();
 });
 authDialog.addEventListener("cancel", (event) => event.preventDefault());
-backupDialog.addEventListener("cancel", (event) => {
-  if (backupRunning) event.preventDefault();
+settingsDialog.addEventListener("cancel", (event) => {
+  if (backupRunning || catalogDeleteRunning) event.preventDefault();
 });
-backupDialog.addEventListener("click", (event) => {
-  if (event.target === backupDialog) closeBackupDialog();
+settingsDialog.addEventListener("click", (event) => {
+  if (event.target === settingsDialog) closeSettingsDialog();
 });
 duplicateDialog.addEventListener("cancel", (event) => {
   event.preventDefault();

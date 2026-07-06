@@ -207,7 +207,7 @@ h1 {
 }
 .count { min-width: 70px; color: var(--muted); text-align: right; }
 
-.primary, .secondary, .ghost, .icon-button {
+.primary, .secondary, .danger, .ghost, .icon-button {
   min-height: 42px;
   padding: .65rem 1rem;
   border: 0;
@@ -216,6 +216,12 @@ h1 {
 }
 .primary { color: white; background: var(--amber); }
 .primary:hover { background: #c9832e; }
+.danger { color: white; background: var(--danger); }
+.danger:hover { background: #873229; }
+.primary:disabled, .secondary:disabled, .danger:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
 .header-secondary {
   min-height: 42px;
   padding: .6rem .9rem;
@@ -716,6 +722,35 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   border-radius: 13px;
   background: #faf8f2;
 }
+.settings-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+.backup-options .danger-zone {
+  grid-column: 1 / -1;
+  border-color: #e5b9b1;
+  background: #fff7f5;
+}
+.backup-options .danger-zone h3 { color: var(--danger); }
+.delete-catalog-confirmation {
+  width: 100%;
+  margin-top: .85rem;
+  padding-top: .85rem;
+  border-top: 1px solid #e5b9b1;
+}
+.delete-catalog-confirmation p { margin-top: 0; color: var(--ink); }
+.delete-catalog-confirmation label {
+  display: block;
+  margin-bottom: .4rem;
+  color: var(--ink);
+  font-size: .82rem;
+  font-weight: 700;
+}
+.delete-catalog-confirmation input {
+  width: 100%;
+  margin-bottom: .7rem;
+}
 .backup-options h3 { margin: 0; color: var(--green); font-size: 1rem; }
 .backup-options p { flex: 1; margin: .45rem 0 .9rem; color: var(--muted); font-size: .82rem; line-height: 1.45; }
 .backup-status { min-height: 1.2em; margin: .8rem 0 0; color: var(--green); font-size: .85rem; font-weight: 750; }
@@ -1024,6 +1059,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   }
   .backup-options { grid-template-columns: 1fr; }
   .backup-options section { padding: .85rem; }
+  .settings-card-actions { width: 100%; }
+  .settings-card-actions button { flex: 1 1 auto; }
   .backup-dialog > .dialog-actions,
   .duplicate-dialog > .dialog-actions {
     position: static;

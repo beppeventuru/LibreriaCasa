@@ -292,6 +292,23 @@ export async function removeBook(id) {
   if (error) throw error;
 }
 
+export async function clearCatalog() {
+  if (!isCloudMode) {
+    const books = await listBooks();
+    await Promise.all(books.map((book) => removeBook(book.id)));
+    return books.length;
+  }
+
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("books")
+    .delete()
+    .not("id", "is", null)
+    .select("id");
+  if (error) throw error;
+  return data?.length || 0;
+}
+
 export async function lookupBookByIsbn(isbn) {
   if (!isCloudMode) {
     return localRequest(`/api/isbn/${encodeURIComponent(isbn)}`);
