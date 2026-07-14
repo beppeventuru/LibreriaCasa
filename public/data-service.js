@@ -317,7 +317,26 @@ export async function lookupBookByIsbn(isbn) {
   const { data, error } = await supabase.functions.invoke("isbn-lookup", {
     body: { isbn }
   });
-  if (error) throw error;
+  if (error) {
+    const detail = await readableFunctionError(error);
+    throw new Error(detail || error.message || "Errore durante la ricerca ISBN");
+  }
   if (!data?.title) throw new Error(data?.error || "Nessun libro trovato con questo ISBN");
   return data;
+}
+
+async function readableFunctionError(error) {
+  const response = error?.context;
+  if (!response?.clone) return "";
+
+  try {
+    const payload = await response.clone().json();
+    return payload?.error || payload?.message || "";
+  } catch {
+    try {
+      return await response.clone().text();
+    } catch {
+      return "";
+    }
+  }
 }

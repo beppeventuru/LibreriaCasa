@@ -18,7 +18,7 @@ import {
   signOut,
   signUp,
   updatePassword
-} from "./data-service.js?v=20260706-settings1";
+} from "./data-service.js?v=20260714-isbn1";
 
 const grid = document.querySelector("#bookGrid");
 const emptyState = document.querySelector("#emptyState");

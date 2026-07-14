@@ -16,6 +16,21 @@ const languageNames: Record<string, string> = {
   ger: "Tedesco"
 };
 
+type BookMetadata = {
+  title: string;
+  authors: string;
+  isbn: string;
+  publisher: string;
+  publication_year: string | null;
+  language: string;
+  location: string;
+  reading_status: string;
+  loaned_to: string;
+  tags: string;
+  notes: string;
+  cover_url: string;
+};
+
 export default {
   fetch: withSupabase({ auth: "user" }, async (request) => {
     if (request.method !== "POST") {
@@ -31,56 +46,123 @@ export default {
       );
     }
 
-    const endpoint = new URL("https://www.googleapis.com/books/v1/volumes");
-    endpoint.searchParams.set("q", `isbn:${isbn}`);
-    endpoint.searchParams.set("maxResults", "1");
-    endpoint.searchParams.set("projection", "full");
-    const googleBooksApiKey = Deno.env.get("GOOGLE_BOOKS_API_KEY");
-    if (googleBooksApiKey) endpoint.searchParams.set("key", googleBooksApiKey);
+    const attempts: string[] = [];
 
     try {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        return Response.json(
-          { error: `Google Books non disponibile (${response.status})` },
-          { status: 502 }
-        );
-      }
-      const result = await response.json();
-      const info = result.items?.[0]?.volumeInfo;
-      if (!info) {
-        return Response.json(
-          { error: "Nessun libro trovato con questo ISBN" },
-          { status: 404 }
-        );
-      }
-
-      const year = String(info.publishedDate || "").match(/\d{4}/)?.[0] || null;
-      const cover = info.imageLinks?.large
-        || info.imageLinks?.medium
-        || info.imageLinks?.thumbnail
-        || info.imageLinks?.smallThumbnail
-        || "";
-
-      return Response.json({
-        title: info.subtitle ? `${info.title}: ${info.subtitle}` : info.title || "",
-        authors: info.authors?.join(", ") || "",
-        isbn,
-        publisher: info.publisher || "",
-        publication_year: year,
-        language: languageNames[info.language] || info.language || "",
-        location: "",
-        reading_status: "Da sistemare",
-        loaned_to: "",
-        tags: info.categories?.slice(0, 8).join(", ") || "",
-        notes: info.description || "",
-        cover_url: cover.replace(/^http:/, "https:")
-      });
-    } catch {
-      return Response.json(
-        { error: "Non riesco a contattare Google Books" },
-        { status: 502 }
-      );
+      const googleBook = await lookupGoogleBooks(isbn);
+      if (googleBook) return Response.json(googleBook);
+      attempts.push("Google Books: nessun risultato");
+    } catch (error) {
+      attempts.push(`Google Books: ${messageFrom(error)}`);
     }
+
+    try {
+      const openLibraryBook = await lookupOpenLibrary(isbn);
+      if (openLibraryBook) return Response.json(openLibraryBook);
+      attempts.push("Open Library: nessun risultato");
+    } catch (error) {
+      attempts.push(`Open Library: ${messageFrom(error)}`);
+    }
+
+    return Response.json({
+      error: `Nessun libro trovato con questo ISBN. ${attempts.join(" - ")}`
+    });
   })
 };
+
+async function lookupGoogleBooks(isbn: string): Promise<BookMetadata | null> {
+  const endpoint = new URL("https://www.googleapis.com/books/v1/volumes");
+  endpoint.searchParams.set("q", `isbn:${isbn}`);
+  endpoint.searchParams.set("maxResults", "1");
+  endpoint.searchParams.set("projection", "full");
+  const googleBooksApiKey = Deno.env.get("GOOGLE_BOOKS_API_KEY");
+  if (googleBooksApiKey) endpoint.searchParams.set("key", googleBooksApiKey);
+
+  const response = await fetch(endpoint);
+  if (!response.ok) {
+    throw new Error(`servizio non disponibile (${response.status})`);
+  }
+
+  const result = await response.json();
+  const info = result.items?.[0]?.volumeInfo;
+  if (!info) return null;
+
+  const year = String(info.publishedDate || "").match(/\d{4}/)?.[0] || null;
+  const cover = info.imageLinks?.large
+    || info.imageLinks?.medium
+    || info.imageLinks?.thumbnail
+    || info.imageLinks?.smallThumbnail
+    || "";
+
+  return {
+    title: info.subtitle ? `${info.title}: ${info.subtitle}` : info.title || "",
+    authors: info.authors?.join(", ") || "",
+    isbn,
+    publisher: info.publisher || "",
+    publication_year: year,
+    language: languageNames[info.language] || info.language || "",
+    location: "",
+    reading_status: "Da sistemare",
+    loaned_to: "",
+    tags: info.categories?.slice(0, 8).join(", ") || "",
+    notes: info.description || "",
+    cover_url: cover.replace(/^http:/, "https:")
+  };
+}
+
+async function lookupOpenLibrary(isbn: string): Promise<BookMetadata | null> {
+  const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`servizio non disponibile (${response.status})`);
+  }
+
+  const info = await response.json();
+  const authors = await openLibraryAuthorNames(info.authors);
+  const language = openLibraryLanguage(info.languages?.[0]?.key);
+  const year = String(info.publish_date || "").match(/\d{4}/)?.[0] || null;
+
+  return {
+    title: info.subtitle ? `${info.title}: ${info.subtitle}` : info.title || "",
+    authors,
+    isbn,
+    publisher: info.publishers?.[0] || "",
+    publication_year: year,
+    language,
+    location: "",
+    reading_status: "Da sistemare",
+    loaned_to: "",
+    tags: info.subjects?.slice(0, 8).join(", ") || "",
+    notes: typeof info.description === "string" ? info.description : info.description?.value || "",
+    cover_url: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`
+  };
+}
+
+async function openLibraryAuthorNames(authors: Array<{ key?: string }> | undefined) {
+  if (!authors?.length) return "";
+
+  const names = await Promise.all(
+    authors.slice(0, 4).map(async (author) => {
+      if (!author.key) return "";
+      try {
+        const response = await fetch(`https://openlibrary.org${author.key}.json`);
+        if (!response.ok) return "";
+        const details = await response.json();
+        return details.name || details.personal_name || "";
+      } catch {
+        return "";
+      }
+    })
+  );
+
+  return names.filter(Boolean).join(", ");
+}
+
+function openLibraryLanguage(key = "") {
+  const code = key.split("/").pop() || "";
+  return languageNames[code] || code || "";
+}
+
+function messageFrom(error: unknown) {
+  return error instanceof Error ? error.message : "errore sconosciuto";
+}
