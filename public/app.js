@@ -96,6 +96,8 @@ const exportBackupButton = document.querySelector("#exportBackupButton");
 const importBackupButton = document.querySelector("#importBackupButton");
 const backupFileInput = document.querySelector("#backupFileInput");
 const backupStatus = document.querySelector("#backupStatus");
+const refreshMissingCoversButton = document.querySelector("#refreshMissingCoversButton");
+const coverRefreshSummary = document.querySelector("#coverRefreshSummary");
 const showDeleteCatalogButton = document.querySelector("#showDeleteCatalogButton");
 const deleteCatalogConfirmation = document.querySelector("#deleteCatalogConfirmation");
 const deleteCatalogPhrase = document.querySelector("#deleteCatalogPhrase");
@@ -149,6 +151,7 @@ let activeQuickFilter = "all";
 let sortAscending = true;
 let bulkRunning = false;
 let backupRunning = false;
+let coverRefreshRunning = false;
 let catalogDeleteRunning = false;
 let scannerControls = null;
 let scannerTrack = null;
@@ -862,8 +865,30 @@ function setBackupBusy(busy) {
   backupRunning = busy;
   exportBackupButton.disabled = busy;
   importBackupButton.disabled = busy;
+  refreshMissingCoversButton.disabled = busy;
   closeSettingsButton.disabled = busy;
   dismissSettingsButton.disabled = busy;
+}
+
+function getBooksWithoutCover() {
+  return catalogBooks.filter((book) => !String(book.cover_url ?? "").trim());
+}
+
+function updateCoverRefreshSummary() {
+  const missingBooks = getBooksWithoutCover();
+  const eligibleBooks = missingBooks.filter((book) => isValidIsbn(book.isbn));
+  const withoutIsbn = missingBooks.length - eligibleBooks.length;
+
+  if (!missingBooks.length) {
+    coverRefreshSummary.textContent = "Tutti i libri hanno già una copertina.";
+    refreshMissingCoversButton.disabled = true;
+    return;
+  }
+
+  coverRefreshSummary.textContent = withoutIsbn
+    ? `${missingBooks.length} libri senza copertina: posso cercarne ${eligibleBooks.length} tramite ISBN; ${withoutIsbn} non hanno un ISBN.`
+    : `${missingBooks.length} libri senza copertina: la ricerca userà i loro ISBN, uno alla volta.`;
+  refreshMissingCoversButton.disabled = backupRunning;
 }
 
 function isAppInstalled() {
@@ -904,12 +929,60 @@ function openSettingsDialog() {
     ? `Elimina definitivamente ${catalogBooks.length} ${catalogBooks.length === 1 ? "libro" : "libri"} e lo storico dei prestiti. L’account resterà attivo.`
     : "Il catalogo è già vuoto. L’account e le impostazioni resteranno attivi.";
   showDeleteCatalogButton.disabled = catalogBooks.length === 0;
+  updateCoverRefreshSummary();
   syncInstallOption();
   settingsDialog.showModal();
 }
 
 function closeSettingsDialog() {
-  if (!backupRunning && !catalogDeleteRunning) settingsDialog.close();
+  if (!backupRunning && !coverRefreshRunning && !catalogDeleteRunning) settingsDialog.close();
+}
+
+async function refreshMissingCovers() {
+  const booksWithoutCover = getBooksWithoutCover();
+  const candidates = booksWithoutCover.filter((book) => isValidIsbn(book.isbn));
+  const skipped = booksWithoutCover.length - candidates.length;
+
+  if (!candidates.length) {
+    setBackupStatus("Non ci sono ISBN utilizzabili per cercare le copertine.", true);
+    return;
+  }
+
+  coverRefreshRunning = true;
+  setBackupBusy(true);
+  let added = 0;
+  let notFound = 0;
+  let failed = 0;
+
+  try {
+    for (let index = 0; index < candidates.length; index += 1) {
+      const book = candidates[index];
+      setBackupStatus(`Cerco la copertina ${index + 1} di ${candidates.length}: ${book.title || book.isbn}…`);
+
+      try {
+        const metadata = await lookupBookByIsbn(book.isbn);
+        const coverUrl = String(metadata.cover_url ?? "").trim();
+        if (!coverUrl) {
+          notFound += 1;
+          continue;
+        }
+        await saveBook({ ...bookPayloadFrom(book), cover_url: coverUrl }, book.id);
+        added += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    await loadBooks(searchInput.value);
+    const pieces = [`${added} aggiunte`, `${notFound} non trovate`];
+    if (failed) pieces.push(`${failed} non raggiungibili ora`);
+    if (skipped) pieces.push(`${skipped} senza ISBN`);
+    setBackupStatus(`Ricerca copertine completata: ${pieces.join(", ")}.`, failed > 0);
+  } finally {
+    coverRefreshRunning = false;
+    setBackupBusy(false);
+    updateCoverRefreshSummary();
+  }
 }
 
 async function deleteEntireCatalog() {
@@ -1819,6 +1892,7 @@ closeSettingsButton.addEventListener("click", closeSettingsDialog);
 dismissSettingsButton.addEventListener("click", closeSettingsDialog);
 exportBackupButton.addEventListener("click", exportBackup);
 importBackupButton.addEventListener("click", () => backupFileInput.click());
+refreshMissingCoversButton.addEventListener("click", refreshMissingCovers);
 backupFileInput.addEventListener("change", () => {
   const [file] = backupFileInput.files;
   if (file) importBackupFile(file);

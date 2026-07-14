@@ -317,6 +317,11 @@
           <p id="installAppStatus">Installa Libreria Casa sul dispositivo per aprirla come una normale app.</p>
           <button class="secondary" id="installAppButton" type="button" disabled>Installazione non disponibile</button>
         </section>
+        <section>
+          <h3>Copertine mancanti</h3>
+          <p id="coverRefreshSummary">Controlla gli ISBN dei libri senza copertina e prova a recuperarla dai cataloghi online.</p>
+          <button class="secondary" id="refreshMissingCoversButton" type="button">Completa copertine</button>
+        </section>
         <section class="danger-zone">
           <h3>Elimina catalogo</h3>
           <p id="deleteCatalogSummary">Elimina tutti i libri e lo storico dei prestiti. L’account e le impostazioni resteranno attivi.</p>
@@ -420,6 +425,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260714-author-sort1"></script>
+  <script type="module" src="app.js?v=20260714-cover-refresh1"></script>
 </body>
 </html>

@@ -48,21 +48,42 @@ export default {
 
     const attempts: string[] = [];
 
+    let googleBook: BookMetadata | null = null;
     try {
-      const googleBook = await lookupGoogleBooks(isbn);
-      if (googleBook) return Response.json(googleBook);
-      attempts.push("Google Books: nessun risultato");
+      googleBook = await lookupGoogleBooks(isbn);
+      if (googleBook?.cover_url) return Response.json(googleBook);
+      if (googleBook) {
+        attempts.push("Google Books: copertina non disponibile");
+      } else {
+        attempts.push("Google Books: nessun risultato");
+      }
     } catch (error) {
       attempts.push(`Google Books: ${messageFrom(error)}`);
     }
 
     try {
+      const openLibraryCoverUrl = await lookupOpenLibraryCover(isbn);
+      if (openLibraryCoverUrl && googleBook) {
+        return Response.json({ ...googleBook, cover_url: openLibraryCoverUrl });
+      }
+    } catch (error) {
+      attempts.push(`Copertina Open Library: ${messageFrom(error)}`);
+    }
+
+    try {
       const openLibraryBook = await lookupOpenLibrary(isbn);
-      if (openLibraryBook) return Response.json(openLibraryBook);
+      if (openLibraryBook) {
+        return Response.json({
+          ...(googleBook || openLibraryBook),
+          cover_url: openLibraryBook.cover_url
+        });
+      }
       attempts.push("Open Library: nessun risultato");
     } catch (error) {
       attempts.push(`Open Library: ${messageFrom(error)}`);
     }
+
+    if (googleBook) return Response.json(googleBook);
 
     return Response.json({
       error: `Nessun libro trovato con questo ISBN. ${attempts.join(" - ")}`
@@ -138,8 +159,14 @@ async function lookupOpenLibrary(isbn: string): Promise<BookMetadata | null> {
     loaned_to: "",
     tags: info.subjects?.slice(0, 8).join(", ") || "",
     notes: typeof info.description === "string" ? info.description : info.description?.value || "",
-    cover_url: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`
+    cover_url: await lookupOpenLibraryCover(isbn)
   };
+}
+
+async function lookupOpenLibraryCover(isbn: string) {
+  const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
+  const response = await fetch(url, { method: "HEAD" });
+  return response.ok ? url : "";
 }
 
 async function openLibraryAuthorNames(authors: Array<{ key?: string }> | undefined) {
