@@ -78,7 +78,11 @@ async function lookupGoogleBooks(isbn: string): Promise<BookMetadata | null> {
   const googleBooksApiKey = Deno.env.get("GOOGLE_BOOKS_API_KEY");
   if (googleBooksApiKey) endpoint.searchParams.set("key", googleBooksApiKey);
 
-  const response = await fetch(endpoint);
+  const response = await fetchWithRetry(endpoint, {
+    attempts: 4,
+    retryStatuses: [429, 500, 502, 503, 504],
+    delays: [700, 1600, 3200]
+  });
   if (!response.ok) {
     throw new Error(`servizio non disponibile (${response.status})`);
   }
@@ -165,4 +169,31 @@ function openLibraryLanguage(key = "") {
 
 function messageFrom(error: unknown) {
   return error instanceof Error ? error.message : "errore sconosciuto";
+}
+
+async function fetchWithRetry(
+  url: URL | string,
+  options: { attempts: number; retryStatuses: number[]; delays: number[] }
+) {
+  let lastResponse: Response | null = null;
+
+  for (let attempt = 0; attempt < options.attempts; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      lastResponse = response;
+      if (!options.retryStatuses.includes(response.status)) return response;
+    } catch (error) {
+      if (attempt === options.attempts - 1) throw error;
+    }
+
+    if (attempt < options.attempts - 1) {
+      await wait(options.delays[attempt] || 1000);
+    }
+  }
+
+  return lastResponse ?? fetch(url);
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
