@@ -273,11 +273,36 @@ function compareBooks(left, right) {
     if (leftYear && !rightYear) return -1;
     return (leftYear - rightYear) * (sortAscending ? 1 : -1);
   }
-  const leftValue = String(left[field] ?? "").trim();
-  const rightValue = String(right[field] ?? "").trim();
+  const leftValue = field === "authors"
+    ? authorSortKey(left.authors)
+    : String(left[field] ?? "").trim();
+  const rightValue = field === "authors"
+    ? authorSortKey(right.authors)
+    : String(right[field] ?? "").trim();
   if (!leftValue && rightValue) return 1;
   if (leftValue && !rightValue) return -1;
   return italianCollator.compare(leftValue, rightValue) * (sortAscending ? 1 : -1);
+}
+
+function authorSortKey(authors) {
+  const primaryAuthor = String(authors ?? "")
+    .split(/[;,]/)[0]
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!primaryAuthor) return "";
+
+  const nameParts = primaryAuthor.split(" ");
+  const surnameParts = [nameParts.pop()];
+  const surnamePrefixes = new Set([
+    "da", "dal", "dalla", "de", "del", "della", "di", "du", "la", "le",
+    "van", "von", "dos", "das", "st", "saint"
+  ]);
+
+  while (nameParts.length && surnamePrefixes.has(nameParts[nameParts.length - 1].toLocaleLowerCase("it"))) {
+    surnameParts.unshift(nameParts.pop());
+  }
+
+  return `${surnameParts.join(" ")} ${primaryAuthor}`;
 }
 
 function updateSortDirection() {
@@ -711,17 +736,12 @@ function getUnplacedBooks() {
   return catalogBooks
     .filter((book) => matchesQuickFilter(book, "unplaced"))
     .sort((left, right) => {
-      const byAuthor = String(left.authors ?? "").localeCompare(
-        String(right.authors ?? ""),
-        "it",
-        { sensitivity: "base", numeric: true }
+      const byAuthor = italianCollator.compare(
+        authorSortKey(left.authors),
+        authorSortKey(right.authors)
       );
       if (byAuthor) return byAuthor;
-      return String(left.title ?? "").localeCompare(
-        String(right.title ?? ""),
-        "it",
-        { sensitivity: "base", numeric: true }
-      );
+      return italianCollator.compare(String(left.title ?? ""), String(right.title ?? ""));
     });
 }
 
