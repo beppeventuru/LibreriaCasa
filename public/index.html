@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=20260706-portrait1">
   <link rel="icon" href="app-icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://books.google.com" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20260706-settings1">
+  <link rel="stylesheet" href="styles.css?v=20260714-cover-review1">
 </head>
 <body>
   <div class="app-header">
@@ -320,7 +320,7 @@
         <section>
           <h3>Copertine mancanti</h3>
           <p id="coverRefreshSummary">Controlla gli ISBN dei libri senza copertina e prova a recuperarla dai cataloghi online.</p>
-          <button class="secondary" id="refreshMissingCoversButton" type="button">Completa copertine</button>
+          <button class="secondary" id="refreshMissingCoversButton" type="button">Cerca copertine</button>
         </section>
         <section class="danger-zone">
           <h3>Elimina catalogo</h3>
@@ -345,6 +345,27 @@
     <div class="dialog-actions">
       <span class="spacer"></span>
       <button class="secondary" id="dismissSettingsButton" type="button">Chiudi</button>
+    </div>
+  </dialog>
+
+  <dialog id="coverReviewDialog" class="cover-review-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Copertine trovate</p>
+        <h2>Controlla le proposte</h2>
+      </div>
+      <button class="icon-button" id="closeCoverReviewButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="cover-review-scroll">
+      <p id="coverReviewSummary" class="cover-review-summary" role="status" aria-live="polite"></p>
+      <div id="coverReviewList" class="cover-review-list"></div>
+    </div>
+
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button class="secondary" id="cancelCoverReviewButton" type="button">Annulla</button>
+      <button class="primary" id="saveSelectedCoversButton" type="button">Salva copertine selezionate</button>
     </div>
   </dialog>
 
@@ -425,6 +446,6 @@
   </template>
 
   <script src="config.js"></script>
-  <script type="module" src="app.js?v=20260714-cover-refresh1"></script>
+  <script type="module" src="app.js?v=20260714-cover-review1"></script>
 </body>
 </html>

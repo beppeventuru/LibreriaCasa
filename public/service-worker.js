@@ -1,9 +1,9 @@
-const CACHE_NAME = "libreria-casa-v14";
+const CACHE_NAME = "libreria-casa-v15";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260706-settings1",
-  "./app.js?v=20260714-cover-refresh1",
+  "./styles.css?v=20260714-cover-review1",
+  "./app.js?v=20260714-cover-review1",
   "./data-service.js?v=20260714-isbn1",
   "./config.js",
   "./manifest.webmanifest?v=20260706-portrait1",

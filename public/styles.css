@@ -755,6 +755,53 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
 .backup-options p { flex: 1; margin: .45rem 0 .9rem; color: var(--muted); font-size: .82rem; line-height: 1.45; }
 .backup-status { min-height: 1.2em; margin: .8rem 0 0; color: var(--green); font-size: .85rem; font-weight: 750; }
 .backup-status.is-error { color: var(--danger); }
+.cover-review-dialog {
+  width: min(780px, calc(100vw - 2rem));
+  max-height: min(780px, calc(100dvh - 2rem));
+  padding: 1.25rem;
+}
+.cover-review-dialog[open] { display: flex; flex-direction: column; }
+.cover-review-dialog > .dialog-header,
+.cover-review-dialog > .dialog-actions { flex: 0 0 auto; }
+.cover-review-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.cover-review-summary { margin: 0 0 .8rem; color: var(--green); font-weight: 750; }
+.cover-review-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+}
+.cover-review-item {
+  display: grid;
+  grid-template-columns: auto 64px minmax(0, 1fr);
+  gap: .65rem;
+  align-items: center;
+  padding: .55rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #faf8f2;
+  cursor: pointer;
+}
+.cover-review-item:has(input:checked) { border-color: #89aea4; background: var(--green-soft); }
+.cover-review-item.is-unavailable { opacity: .55; }
+.cover-review-item input { width: 18px; height: 18px; accent-color: var(--green); }
+.cover-review-image {
+  display: block;
+  width: 64px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--green);
+}
+.cover-review-image img { width: 100%; height: 100%; object-fit: cover; }
+.cover-review-details { display: grid; min-width: 0; gap: .3rem; }
+.cover-review-details strong,
+.cover-review-details span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cover-review-details strong { color: var(--ink); font-family: Georgia, serif; }
+.cover-review-details span { color: var(--muted); font-size: .84rem; }
 .duplicate-dialog {
   width: min(470px, calc(100vw - 2rem));
   padding: 1.3rem;
@@ -928,6 +975,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   #bookDialog,
   .shelf-dialog,
   .backup-dialog,
+  .cover-review-dialog,
   .duplicate-dialog {
     inset: 0;
     width: 100vw;
@@ -1033,19 +1081,25 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .bulk-result { grid-template-columns: 1fr; gap: .3rem; }
   .bulk-manual-button { justify-self: start; margin-top: .25rem; }
   .backup-dialog,
+  .cover-review-dialog,
   .duplicate-dialog {
     padding: .8rem;
     overflow: hidden;
   }
   .backup-dialog[open],
+  .cover-review-dialog[open],
   .duplicate-dialog[open] { display: flex; flex-direction: column; }
   .backup-dialog > .dialog-header,
   .backup-dialog > .dialog-actions,
+  .cover-review-dialog > .dialog-header,
+  .cover-review-dialog > .dialog-actions,
   .duplicate-dialog > .dialog-header,
   .duplicate-dialog > .dialog-actions { flex: 0 0 auto; }
   .backup-dialog > .dialog-header,
+  .cover-review-dialog > .dialog-header,
   .duplicate-dialog > .dialog-header { margin-bottom: .55rem; }
   .backup-dialog-scroll,
+  .cover-review-scroll,
   .duplicate-dialog-scroll {
     flex: 1 1 auto;
     min-height: 0;
@@ -1062,6 +1116,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
   .settings-card-actions { width: 100%; }
   .settings-card-actions button { flex: 1 1 auto; }
   .backup-dialog > .dialog-actions,
+  .cover-review-dialog > .dialog-actions,
   .duplicate-dialog > .dialog-actions {
     position: static;
     bottom: auto;
@@ -1070,7 +1125,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(217,149,63,.
     border-top: 1px solid var(--line);
   }
   .backup-dialog > .dialog-actions button,
+  .cover-review-dialog > .dialog-actions button,
   .duplicate-dialog > .dialog-actions button { min-height: 46px; }
+  .cover-review-list { grid-template-columns: 1fr; }
   .duplicate-dialog > .dialog-actions button { padding-inline: .65rem; }
   .shelf-dialog {
     overflow: hidden;

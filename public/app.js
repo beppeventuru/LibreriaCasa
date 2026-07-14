@@ -98,6 +98,12 @@ const backupFileInput = document.querySelector("#backupFileInput");
 const backupStatus = document.querySelector("#backupStatus");
 const refreshMissingCoversButton = document.querySelector("#refreshMissingCoversButton");
 const coverRefreshSummary = document.querySelector("#coverRefreshSummary");
+const coverReviewDialog = document.querySelector("#coverReviewDialog");
+const closeCoverReviewButton = document.querySelector("#closeCoverReviewButton");
+const cancelCoverReviewButton = document.querySelector("#cancelCoverReviewButton");
+const saveSelectedCoversButton = document.querySelector("#saveSelectedCoversButton");
+const coverReviewSummary = document.querySelector("#coverReviewSummary");
+const coverReviewList = document.querySelector("#coverReviewList");
 const showDeleteCatalogButton = document.querySelector("#showDeleteCatalogButton");
 const deleteCatalogConfirmation = document.querySelector("#deleteCatalogConfirmation");
 const deleteCatalogPhrase = document.querySelector("#deleteCatalogPhrase");
@@ -152,6 +158,8 @@ let sortAscending = true;
 let bulkRunning = false;
 let backupRunning = false;
 let coverRefreshRunning = false;
+let coverSaveRunning = false;
+let coverReviewCandidates = [];
 let catalogDeleteRunning = false;
 let scannerControls = null;
 let scannerTrack = null;
@@ -950,7 +958,8 @@ async function refreshMissingCovers() {
 
   coverRefreshRunning = true;
   setBackupBusy(true);
-  let added = 0;
+  const lookupByIsbn = new Map();
+  const proposals = [];
   let notFound = 0;
   let failed = 0;
 
@@ -960,28 +969,140 @@ async function refreshMissingCovers() {
       setBackupStatus(`Cerco la copertina ${index + 1} di ${candidates.length}: ${book.title || book.isbn}…`);
 
       try {
-        const metadata = await lookupBookByIsbn(book.isbn);
-        const coverUrl = String(metadata.cover_url ?? "").trim();
+        const isbn = cleanIsbn(book.isbn);
+        if (!lookupByIsbn.has(isbn)) {
+          const metadata = await lookupBookByIsbn(isbn);
+          lookupByIsbn.set(isbn, String(metadata.cover_url ?? "").trim());
+        }
+        const coverUrl = lookupByIsbn.get(isbn);
         if (!coverUrl) {
           notFound += 1;
           continue;
         }
-        await saveBook({ ...bookPayloadFrom(book), cover_url: coverUrl }, book.id);
-        added += 1;
+        proposals.push({ book, coverUrl, selected: true });
+      } catch {
+        failed += 1;
+      }
+    }
+
+    const pieces = [`${proposals.length} proposte`, `${notFound} non trovate`];
+    if (failed) pieces.push(`${failed} non raggiungibili ora`);
+    if (skipped) pieces.push(`${skipped} senza ISBN`);
+    setBackupStatus(`Ricerca completata: ${pieces.join(", ")}.`, failed > 0);
+  } finally {
+    coverRefreshRunning = false;
+    setBackupBusy(false);
+    updateCoverRefreshSummary();
+  }
+
+  if (proposals.length) {
+    settingsDialog.close();
+    openCoverReview(proposals, { notFound, failed, skipped });
+  }
+}
+
+function openCoverReview(proposals, { notFound, failed, skipped }) {
+  coverReviewCandidates = proposals;
+  coverReviewList.replaceChildren();
+
+  for (const [index, proposal] of proposals.entries()) {
+    const item = document.createElement("label");
+    item.className = "cover-review-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = proposal.selected;
+    checkbox.dataset.coverProposalIndex = String(index);
+    checkbox.setAttribute("aria-label", `Salva la copertina proposta per ${proposal.book.title}`);
+
+    const imageWrap = document.createElement("span");
+    imageWrap.className = "cover-review-image";
+    const image = document.createElement("img");
+    image.src = proposal.coverUrl;
+    image.alt = `Copertina proposta per ${proposal.book.title}`;
+    image.loading = "lazy";
+    image.addEventListener("error", () => {
+      item.classList.add("is-unavailable");
+      checkbox.checked = false;
+      proposal.selected = false;
+      updateSelectedCoverButton();
+    });
+    imageWrap.append(image);
+
+    const details = document.createElement("span");
+    details.className = "cover-review-details";
+    const title = document.createElement("strong");
+    title.textContent = proposal.book.title || "Titolo non indicato";
+    const authors = document.createElement("span");
+    authors.textContent = proposal.book.authors || "Autore non indicato";
+    details.append(title, authors);
+
+    item.append(checkbox, imageWrap, details);
+    coverReviewList.append(item);
+  }
+
+  const notes = [];
+  if (notFound) notes.push(`${notFound} non trovate`);
+  if (failed) notes.push(`${failed} da riprovare`);
+  if (skipped) notes.push(`${skipped} senza ISBN`);
+  coverReviewSummary.textContent = notes.length
+    ? `Controlla le ${proposals.length} proposte. ${notes.join(", ")}.`
+    : `Controlla le ${proposals.length} copertine proposte prima di salvarle.`;
+  updateSelectedCoverButton();
+  coverReviewDialog.showModal();
+}
+
+function updateSelectedCoverButton() {
+  const selectedCount = coverReviewCandidates.filter((proposal) => proposal.selected).length;
+  saveSelectedCoversButton.disabled = selectedCount === 0;
+  saveSelectedCoversButton.textContent = selectedCount === 1
+    ? "Salva 1 copertina"
+    : `Salva ${selectedCount} copertine`;
+}
+
+function closeCoverReview() {
+  if (coverSaveRunning) return;
+  coverReviewDialog.close();
+  coverReviewCandidates = [];
+}
+
+async function saveSelectedCovers() {
+  const selected = coverReviewCandidates.filter((proposal) => proposal.selected);
+  if (!selected.length) return;
+
+  coverSaveRunning = true;
+  saveSelectedCoversButton.disabled = true;
+  closeCoverReviewButton.disabled = true;
+  cancelCoverReviewButton.disabled = true;
+  let saved = 0;
+  let failed = 0;
+
+  try {
+    for (let index = 0; index < selected.length; index += 1) {
+      const proposal = selected[index];
+      coverReviewSummary.textContent = `Salvo ${index + 1} di ${selected.length}: ${proposal.book.title || proposal.book.isbn}…`;
+      try {
+        await saveBook({ ...bookPayloadFrom(proposal.book), cover_url: proposal.coverUrl }, proposal.book.id);
+        saved += 1;
       } catch {
         failed += 1;
       }
     }
 
     await loadBooks(searchInput.value);
-    const pieces = [`${added} aggiunte`, `${notFound} non trovate`];
-    if (failed) pieces.push(`${failed} non raggiungibili ora`);
-    if (skipped) pieces.push(`${skipped} senza ISBN`);
-    setBackupStatus(`Ricerca copertine completata: ${pieces.join(", ")}.`, failed > 0);
+    coverReviewDialog.close();
+    coverReviewCandidates = [];
+    openSettingsDialog();
+    setBackupStatus(
+      failed
+        ? `Copertine salvate: ${saved}. ${failed} non sono state aggiornate.`
+        : `Copertine salvate: ${saved}.`,
+      failed > 0
+    );
   } finally {
-    coverRefreshRunning = false;
-    setBackupBusy(false);
-    updateCoverRefreshSummary();
+    coverSaveRunning = false;
+    closeCoverReviewButton.disabled = false;
+    cancelCoverReviewButton.disabled = false;
   }
 }
 
@@ -1893,6 +2014,17 @@ dismissSettingsButton.addEventListener("click", closeSettingsDialog);
 exportBackupButton.addEventListener("click", exportBackup);
 importBackupButton.addEventListener("click", () => backupFileInput.click());
 refreshMissingCoversButton.addEventListener("click", refreshMissingCovers);
+closeCoverReviewButton.addEventListener("click", closeCoverReview);
+cancelCoverReviewButton.addEventListener("click", closeCoverReview);
+saveSelectedCoversButton.addEventListener("click", saveSelectedCovers);
+coverReviewList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-cover-proposal-index]");
+  if (!checkbox) return;
+  const index = Number(checkbox.dataset.coverProposalIndex);
+  if (!coverReviewCandidates[index]) return;
+  coverReviewCandidates[index].selected = checkbox.checked;
+  updateSelectedCoverButton();
+});
 backupFileInput.addEventListener("change", () => {
   const [file] = backupFileInput.files;
   if (file) importBackupFile(file);
@@ -2015,6 +2147,13 @@ settingsDialog.addEventListener("cancel", (event) => {
 });
 settingsDialog.addEventListener("click", (event) => {
   if (event.target === settingsDialog) closeSettingsDialog();
+});
+coverReviewDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeCoverReview();
+});
+coverReviewDialog.addEventListener("click", (event) => {
+  if (event.target === coverReviewDialog) closeCoverReview();
 });
 duplicateDialog.addEventListener("cancel", (event) => {
   event.preventDefault();
