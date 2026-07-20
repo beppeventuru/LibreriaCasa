@@ -48,6 +48,14 @@ export default {
 
     const attempts: string[] = [];
 
+    try {
+      const ibsBook = await lookupIbs(isbn);
+      if (ibsBook) return Response.json(ibsBook);
+      attempts.push("IBS: nessun risultato");
+    } catch (error) {
+      attempts.push(`IBS: ${messageFrom(error)}`);
+    }
+
     let googleBook: BookMetadata | null = null;
     try {
       googleBook = await lookupGoogleBooks(isbn);
@@ -90,6 +98,55 @@ export default {
     });
   })
 };
+
+async function lookupIbs(isbn: string): Promise<BookMetadata | null> {
+  const response = await fetch(`https://www.ibs.it/search/?query=${encodeURIComponent(isbn)}`, {
+    headers: {
+      "user-agent": "Mozilla/5.0 (compatible; LibreriaCasa/1.0)",
+      "accept-language": "it-IT,it;q=0.9"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`servizio non disponibile (${response.status})`);
+  }
+
+  const html = await response.text();
+  const escapedIsbn = isbn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const record = html.match(new RegExp(`\\{[^{}]*"item_id"\\s*:\\s*"${escapedIsbn}"[^{}]*\\}`))?.[0];
+  if (!record) return null;
+
+  const title = jsonValue(record, "item_name");
+  if (!title) return null;
+
+  const coverUrl = html.match(new RegExp(`https://www\\.ibs\\.it/images/${escapedIsbn}_[^"'<>\\s]+`))?.[0] || "";
+  const publicationYear = jsonValue(record, "year_edition").match(/\\d{4}/)?.[0] || null;
+
+  return {
+    title,
+    authors: jsonValue(record, "item_author"),
+    isbn,
+    publisher: jsonValue(record, "item_brand"),
+    publication_year: publicationYear,
+    language: "Italiano",
+    location: "",
+    reading_status: "Da sistemare",
+    loaned_to: "",
+    tags: "",
+    notes: "",
+    cover_url: coverUrl
+  };
+}
+
+function jsonValue(text: string, key: string) {
+  const match = text.match(new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`));
+  if (!match) return "";
+  try {
+    return JSON.parse(`"${match[1]}"`);
+  } catch {
+    return match[1];
+  }
+}
 
 async function lookupGoogleBooks(isbn: string): Promise<BookMetadata | null> {
   const endpoint = new URL("https://www.googleapis.com/books/v1/volumes");
