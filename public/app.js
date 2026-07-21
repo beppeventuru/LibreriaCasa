@@ -277,6 +277,11 @@ function renderQuickFilters() {
 
 function compareBooks(left, right) {
   const field = sortField.value;
+  if (field === "created_at") {
+    const leftDate = Date.parse(left.created_at) || 0;
+    const rightDate = Date.parse(right.created_at) || 0;
+    return (leftDate - rightDate) * (sortAscending ? 1 : -1);
+  }
   if (field === "publication_year") {
     const leftYear = Number(left[field]) || 0;
     const rightYear = Number(right[field]) || 0;
@@ -318,6 +323,17 @@ function authorSortKey(authors) {
 
 function updateSortDirection() {
   const chronological = sortField.value === "publication_year";
+  const insertionOrder = sortField.value === "created_at";
+  if (insertionOrder) {
+    sortDirectionButton.textContent = sortAscending ? "Meno recenti" : "Più recenti";
+    sortDirectionButton.setAttribute(
+      "aria-label",
+      sortAscending
+        ? "Mostra prima i libri inseriti meno recentemente"
+        : "Mostra prima gli ultimi libri inseriti"
+    );
+    return;
+  }
   sortDirectionButton.textContent = chronological
     ? (sortAscending ? "↑" : "↓")
     : (sortAscending ? "A–Z" : "Z–A");
@@ -1872,7 +1888,10 @@ searchField.addEventListener("change", () => {
   applyCatalogView();
 });
 
-sortField.addEventListener("change", () => applyCatalogView());
+sortField.addEventListener("change", () => {
+  if (sortField.value === "created_at") sortAscending = false;
+  applyCatalogView();
+});
 sortDirectionButton.addEventListener("click", () => {
   sortAscending = !sortAscending;
   applyCatalogView();
