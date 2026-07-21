@@ -1,0 +1,2200 @@
+import {
+  clearCatalog,
+  filterBooks,
+  getSession,
+  importBookLoans,
+  isCloudMode,
+  lendBook,
+  listAllBookLoans,
+  listBooks,
+  listBookLoans,
+  lookupBookByIsbn,
+  listenForPasswordRecovery,
+  removeBook,
+  requestPasswordReset,
+  returnBook,
+  saveBook,
+  signIn,
+  signOut,
+  signUp,
+  updatePassword
+} from "./data-service.js?v=20260714-isbn1";
+
+const grid = document.querySelector("#bookGrid");
+const emptyState = document.querySelector("#emptyState");
+const count = document.querySelector("#bookCount");
+const searchInput = document.querySelector("#searchInput");
+const searchField = document.querySelector("#searchField");
+const sortField = document.querySelector("#sortField");
+const sortDirectionButton = document.querySelector("#sortDirectionButton");
+const quickFilterButtons = [...document.querySelectorAll("[data-quick-filter]")];
+const dialog = document.querySelector("#bookDialog");
+const form = document.querySelector("#bookForm");
+const formSubmitButton = form.querySelector('button[type="submit"]');
+const cancelBookButton = document.querySelector("#cancelButton");
+const closeBookButton = document.querySelector("#closeDialogButton");
+const placementModeButton = document.querySelector("#placementModeButton");
+const placementProgress = document.querySelector("#placementProgress");
+const placementCover = document.querySelector("#placementCover");
+const placementCoverPlaceholder = document.querySelector("#placementCoverPlaceholder");
+const formError = document.querySelector("#formError");
+const bookId = document.querySelector("#bookId");
+const dialogTitle = document.querySelector("#dialogTitle");
+const deleteButton = document.querySelector("#deleteBookButton");
+const editBookButton = document.querySelector("#editBookButton");
+const loanBookButton = document.querySelector("#loanBookButton");
+const cardTemplate = document.querySelector("#bookCardTemplate");
+const isbnInput = document.querySelector("#isbnInput");
+const lookupIsbnButton = document.querySelector("#lookupIsbnButton");
+const isbnStatus = document.querySelector("#isbnStatus");
+const bulkDialog = document.querySelector("#bulkDialog");
+const bulkIsbnInput = document.querySelector("#bulkIsbnInput");
+const bulkProgress = document.querySelector("#bulkProgress");
+const bulkResults = document.querySelector("#bulkResults");
+const startBulkButton = document.querySelector("#startBulkButton");
+const closeBulkButton = document.querySelector("#closeBulkButton");
+const cancelBulkButton = document.querySelector("#cancelBulkButton");
+const startScannerButton = document.querySelector("#startScannerButton");
+const stopScannerButton = document.querySelector("#stopScannerButton");
+const focusScannerButton = document.querySelector("#focusScannerButton");
+const barcodeScanner = document.querySelector("#barcodeScanner");
+const barcodeVideo = document.querySelector("#barcodeVideo");
+const scannerStatus = document.querySelector("#scannerStatus");
+const bulkEntryCount = document.querySelector("#bulkEntryCount");
+const shelfDialog = document.querySelector("#shelfDialog");
+const shelfMapContainer = document.querySelector("#shelfMapContainer");
+const shelfSelectionText = document.querySelector("#shelfSelectionText");
+const applyShelfButton = document.querySelector("#applyShelfButton");
+const shelfPickerBody = document.querySelector("#shelfPickerBody");
+const shelfPendingMessage = document.querySelector("#shelfPendingMessage");
+const shelfLegend = document.querySelector("#shelfLegend");
+const libraryButtons = [...document.querySelectorAll("[data-library]")];
+const authDialog = document.querySelector("#authDialog");
+const authForm = document.querySelector("#authForm");
+const authEmail = document.querySelector("#authEmail");
+const authPassword = document.querySelector("#authPassword");
+const authError = document.querySelector("#authError");
+const authMessage = document.querySelector("#authMessage");
+const signUpButton = document.querySelector("#signUpButton");
+const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
+const passwordDialog = document.querySelector("#passwordDialog");
+const passwordForm = document.querySelector("#passwordForm");
+const newPassword = document.querySelector("#newPassword");
+const confirmPassword = document.querySelector("#confirmPassword");
+const passwordError = document.querySelector("#passwordError");
+const passwordMessage = document.querySelector("#passwordMessage");
+const cancelPasswordButton = document.querySelector("#cancelPasswordButton");
+const signOutButton = document.querySelector("#signOutButton");
+const installAppButton = document.querySelector("#installAppButton");
+const installAppStatus = document.querySelector("#installAppStatus");
+const importLocalButton = document.querySelector("#importLocalButton");
+const settingsDialog = document.querySelector("#settingsDialog");
+const settingsButton = document.querySelector("#settingsButton");
+const closeSettingsButton = document.querySelector("#closeSettingsButton");
+const dismissSettingsButton = document.querySelector("#dismissSettingsButton");
+const exportBackupButton = document.querySelector("#exportBackupButton");
+const importBackupButton = document.querySelector("#importBackupButton");
+const backupFileInput = document.querySelector("#backupFileInput");
+const backupStatus = document.querySelector("#backupStatus");
+const refreshMissingCoversButton = document.querySelector("#refreshMissingCoversButton");
+const coverRefreshSummary = document.querySelector("#coverRefreshSummary");
+const coverReviewDialog = document.querySelector("#coverReviewDialog");
+const closeCoverReviewButton = document.querySelector("#closeCoverReviewButton");
+const cancelCoverReviewButton = document.querySelector("#cancelCoverReviewButton");
+const saveSelectedCoversButton = document.querySelector("#saveSelectedCoversButton");
+const coverReviewSummary = document.querySelector("#coverReviewSummary");
+const coverReviewList = document.querySelector("#coverReviewList");
+const showDeleteCatalogButton = document.querySelector("#showDeleteCatalogButton");
+const deleteCatalogConfirmation = document.querySelector("#deleteCatalogConfirmation");
+const deleteCatalogPhrase = document.querySelector("#deleteCatalogPhrase");
+const cancelDeleteCatalogButton = document.querySelector("#cancelDeleteCatalogButton");
+const deleteCatalogButton = document.querySelector("#deleteCatalogButton");
+const deleteCatalogSummary = document.querySelector("#deleteCatalogSummary");
+const deleteCatalogStatus = document.querySelector("#deleteCatalogStatus");
+const duplicateDialog = document.querySelector("#duplicateDialog");
+const duplicateMessage = document.querySelector("#duplicateMessage");
+const duplicateCover = document.querySelector("#duplicateCover");
+const duplicateCoverPlaceholder = document.querySelector("#duplicateCoverPlaceholder");
+const closeDuplicateButton = document.querySelector("#closeDuplicateButton");
+const rejectDuplicateButton = document.querySelector("#rejectDuplicateButton");
+const acceptDuplicateButton = document.querySelector("#acceptDuplicateButton");
+const loanManager = document.querySelector("#loanManager");
+const newLoanSection = document.querySelector("#newLoanSection");
+const currentLoanSection = document.querySelector("#currentLoanSection");
+const loanBorrower = document.querySelector("#loanBorrower");
+const loanDate = document.querySelector("#loanDate");
+const currentLoanText = document.querySelector("#currentLoanText");
+const lendBookButton = document.querySelector("#lendBookButton");
+const returnBookButton = document.querySelector("#returnBookButton");
+const loanStatus = document.querySelector("#loanStatus");
+const loanHistory = document.querySelector("#loanHistory");
+
+const BOOK_DATA_FIELDS = [
+  "title",
+  "authors",
+  "isbn",
+  "publisher",
+  "publication_year",
+  "language",
+  "location",
+  "reading_status",
+  "loaned_to",
+  "tags",
+  "notes",
+  "cover_url"
+];
+
+const italianCollator = new Intl.Collator("it", {
+  sensitivity: "base",
+  numeric: true
+});
+
+let catalogBooks = [];
+let catalogBookById = new Map();
+let books = [];
+let searchTimer;
+let activeQuickFilter = "all";
+let sortAscending = true;
+let bulkRunning = false;
+let backupRunning = false;
+let coverRefreshRunning = false;
+let coverSaveRunning = false;
+let coverReviewCandidates = [];
+let catalogDeleteRunning = false;
+let scannerControls = null;
+let scannerTrack = null;
+let scannerLibraryPromise = null;
+let scannerSession = 0;
+let lastScannedCode = "";
+let lastScanTime = 0;
+let dialogMode = "create";
+let placementWorkflow = false;
+let currentLibrarySelection = "";
+let currentShelfSelection = "";
+let duplicateDecisionResolver = null;
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  syncInstallOption();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  syncInstallOption();
+});
+
+function makeShelfPositions(group, count, x, width, y = 40, step = 92, height = 72) {
+  return Array.from({ length: count }, (_, index) => ({
+    name: `${group} ${index + 1}`,
+    x,
+    y: y + index * step,
+    width,
+    height
+  }));
+}
+
+const shelfProfiles = {
+  Camera: {
+    frames: [{ x: 40, y: 20, width: 520, height: 860, rx: 10 }],
+    openings: [{ x: 170, y: 316, width: 260, height: 564 }],
+    groups: [
+      { label: "Sinistra", count: 9 },
+      { label: "Centro", count: 3 },
+      { label: "Destra", count: 9 }
+    ],
+    positions: [
+      ...makeShelfPositions("Sinistra", 9, 60, 80),
+      ...makeShelfPositions("Centro", 3, 170, 260),
+      ...makeShelfPositions("Destra", 9, 460, 80)
+    ]
+  },
+  Sgabuzzino: {
+    frames: [
+      { x: 40, y: 20, width: 520, height: 245, rx: 10 },
+      { x: 390, y: 20, width: 170, height: 860, rx: 10 }
+    ],
+    openings: [],
+    groups: [
+      { label: "Sinistra", count: 2 },
+      { label: "Destra", count: 9 }
+    ],
+    positions: [
+      ...makeShelfPositions("Sinistra", 2, 60, 310, 40, 105, 80),
+      ...makeShelfPositions("Destra", 9, 410, 130)
+    ]
+  },
+  Ingresso: {
+    frames: [
+      { x: 40, y: 20, width: 340, height: 860, rx: 10 },
+      { x: 360, y: 20, width: 200, height: 296, rx: 10 }
+    ],
+    openings: [],
+    groups: [
+      { label: "Sinistra", count: 9 },
+      { label: "Centro", count: 9 },
+      { label: "Destra", count: 3 }
+    ],
+    positions: [
+      ...makeShelfPositions("Sinistra", 9, 60, 135),
+      ...makeShelfPositions("Centro", 9, 215, 135),
+      ...makeShelfPositions("Destra", 3, 385, 155)
+    ]
+  }
+};
+
+const libraryNames = Object.keys(shelfProfiles);
+
+function matchesQuickFilter(book, filter = activeQuickFilter) {
+  if (filter === "all") return true;
+  if (filter === "unplaced") {
+    return !parseLibraryLocation(book.location).library
+      || String(book.reading_status ?? "") === "Da sistemare";
+  }
+  return true;
+}
+
+function renderQuickFilters() {
+  const totals = {
+    all: catalogBooks.length,
+    unplaced: catalogBooks.reduce(
+      (total, book) => total + Number(matchesQuickFilter(book, "unplaced")),
+      0
+    )
+  };
+  quickFilterButtons.forEach((button) => {
+    const filter = button.dataset.quickFilter;
+    button.querySelector("[data-quick-count]").textContent = totals[filter] ?? 0;
+    button.setAttribute("aria-pressed", String(filter === activeQuickFilter));
+  });
+  const unplacedCount = totals.unplaced;
+  placementModeButton.disabled = unplacedCount === 0;
+  placementModeButton.textContent = unplacedCount
+    ? `Sistema libri ${unplacedCount}`
+    : "Tutto sistemato";
+}
+
+function compareBooks(left, right) {
+  const field = sortField.value;
+  if (field === "created_at") {
+    const leftDate = Date.parse(left.created_at) || 0;
+    const rightDate = Date.parse(right.created_at) || 0;
+    return (leftDate - rightDate) * (sortAscending ? 1 : -1);
+  }
+  if (field === "publication_year") {
+    const leftYear = Number(left[field]) || 0;
+    const rightYear = Number(right[field]) || 0;
+    if (!leftYear && rightYear) return 1;
+    if (leftYear && !rightYear) return -1;
+    return (leftYear - rightYear) * (sortAscending ? 1 : -1);
+  }
+  const leftValue = field === "authors"
+    ? authorSortKey(left.authors)
+    : String(left[field] ?? "").trim();
+  const rightValue = field === "authors"
+    ? authorSortKey(right.authors)
+    : String(right[field] ?? "").trim();
+  if (!leftValue && rightValue) return 1;
+  if (leftValue && !rightValue) return -1;
+  return italianCollator.compare(leftValue, rightValue) * (sortAscending ? 1 : -1);
+}
+
+function authorSortKey(authors) {
+  const primaryAuthor = String(authors ?? "")
+    .split(/[;,]/)[0]
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!primaryAuthor) return "";
+
+  const nameParts = primaryAuthor.split(" ");
+  const surnameParts = [nameParts.pop()];
+  const surnamePrefixes = new Set([
+    "da", "dal", "dalla", "de", "del", "della", "di", "du", "la", "le",
+    "van", "von", "dos", "das", "st", "saint"
+  ]);
+
+  while (nameParts.length && surnamePrefixes.has(nameParts[nameParts.length - 1].toLocaleLowerCase("it"))) {
+    surnameParts.unshift(nameParts.pop());
+  }
+
+  return `${surnameParts.join(" ")} ${primaryAuthor}`;
+}
+
+function updateSortDirection() {
+  const chronological = sortField.value === "publication_year";
+  const insertionOrder = sortField.value === "created_at";
+  if (insertionOrder) {
+    sortDirectionButton.textContent = sortAscending ? "Meno recenti" : "Più recenti";
+    sortDirectionButton.setAttribute(
+      "aria-label",
+      sortAscending
+        ? "Mostra prima i libri inseriti meno recentemente"
+        : "Mostra prima gli ultimi libri inseriti"
+    );
+    return;
+  }
+  sortDirectionButton.textContent = chronological
+    ? (sortAscending ? "↑" : "↓")
+    : (sortAscending ? "A–Z" : "Z–A");
+  sortDirectionButton.setAttribute(
+    "aria-label",
+    chronological
+      ? (sortAscending ? "Anno crescente" : "Anno decrescente")
+      : (sortAscending ? "Ordine dalla A alla Z" : "Ordine dalla Z alla A")
+  );
+}
+
+function applyCatalogView(query = searchInput.value, field = searchField.value) {
+  const searchedBooks = filterBooks(catalogBooks, query, field);
+  books = searchedBooks
+    .filter((book) => matchesQuickFilter(book))
+    .sort(compareBooks);
+  updateSortDirection();
+  renderQuickFilters();
+  renderBooks();
+}
+
+async function loadBooks(query = "", field = searchField.value) {
+  catalogBooks = await listBooks();
+  catalogBookById = new Map(
+    catalogBooks.map((book) => [String(book.id), book])
+  );
+  applyCatalogView(query, field);
+}
+
+function renderBooks() {
+  grid.replaceChildren();
+  const filtered = activeQuickFilter !== "all" || Boolean(searchInput.value.trim());
+  count.textContent = filtered
+    ? `${books.length} di ${catalogBooks.length} libri`
+    : `${books.length} ${books.length === 1 ? "libro" : "libri"}`;
+  emptyState.hidden = catalogBooks.length > 0;
+  const localAddress = location.hostname === "localhost"
+    || location.hostname === "127.0.0.1"
+    || location.hostname.startsWith("192.168.");
+  importLocalButton.hidden = !(
+    isCloudMode
+    && localAddress
+    && catalogBooks.length === 0
+    && !searchInput.value
+  );
+
+  if (!books.length && catalogBooks.length) {
+    const message = document.createElement("p");
+    message.className = "no-results";
+    message.textContent = searchInput.value.trim()
+      ? "Nessun libro corrisponde alla ricerca in questo filtro."
+      : "Nessun libro presente in questo filtro.";
+    grid.append(message);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const book of books) {
+    const card = cardTemplate.content.cloneNode(true);
+    const button = card.querySelector(".card-button");
+    button.dataset.bookId = String(book.id);
+    const image = card.querySelector("img");
+    const placeholder = card.querySelector(".cover-placeholder");
+    card.querySelector(".book-title").textContent = book.title;
+    card.querySelector(".book-author").textContent = book.authors || "Autore non indicato";
+    const location = card.querySelector(".book-location");
+    if (book.location) {
+      const parsedLocation = parseLibraryLocation(book.location);
+      const knownShelf = Boolean(parsedLocation.library && parsedLocation.shelf);
+      const displayLocation = parsedLocation.library
+        ? `${parsedLocation.library} · ${parsedLocation.shelf}`
+        : book.location;
+      location.append(
+        knownShelf
+          ? createShelfMap(parsedLocation.library, parsedLocation.shelf)
+          : document.createTextNode("⌂"),
+        document.createTextNode(displayLocation)
+      );
+    } else {
+      location.hidden = true;
+    }
+
+    const badges = card.querySelector(".book-badges");
+    badges.append(createBadge(book.reading_status, "status"));
+    if (book.loaned_to) badges.append(createBadge(`Prestato a ${book.loaned_to}`, "loan"));
+
+    if (book.cover_url) {
+      image.src = book.cover_url;
+      image.alt = `Copertina di ${book.title}`;
+      image.hidden = false;
+      placeholder.hidden = true;
+      image.addEventListener("error", () => {
+        image.hidden = true;
+        placeholder.hidden = false;
+      }, { once: true });
+    }
+    fragment.append(card);
+  }
+  grid.append(fragment);
+}
+
+function createBadge(text, kind) {
+  const badge = document.createElement("span");
+  badge.className = `badge ${kind}`;
+  if (kind === "status" && text === "Da sistemare") {
+    badge.classList.add("needs-placement");
+  }
+  badge.textContent = text;
+  return badge;
+}
+
+function createShelfMap(library = "Camera", selectedLocation = "", interactive = false) {
+  const profile = shelfProfiles[library] || shelfProfiles.Camera;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 600 900");
+  svg.setAttribute("class", interactive ? "shelf-map shelf-picker-map" : "shelf-map shelf-map-mini");
+  svg.setAttribute("aria-label", interactive ? `Mappa degli scaffali: ${library}` : "");
+  svg.setAttribute("aria-hidden", interactive ? "false" : "true");
+
+  for (const frameData of profile.frames) {
+    const frame = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    for (const [key, value] of Object.entries(frameData)) frame.setAttribute(key, value);
+    frame.setAttribute("class", "shelf-frame");
+    svg.append(frame);
+  }
+
+  for (const openingData of profile.openings) {
+    const opening = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    for (const [key, value] of Object.entries(openingData)) opening.setAttribute(key, value);
+    opening.setAttribute("class", "shelf-doorway");
+    svg.append(opening);
+  }
+
+  for (const position of profile.positions) {
+    const slot = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    slot.setAttribute("x", position.x);
+    slot.setAttribute("y", position.y);
+    slot.setAttribute("width", position.width);
+    slot.setAttribute("height", position.height);
+    slot.setAttribute("rx", "4");
+    slot.dataset.location = position.name;
+    slot.setAttribute("class", `shelf-slot${position.name === selectedLocation ? " selected" : ""}`);
+
+    if (interactive) {
+      slot.setAttribute("role", "button");
+      slot.setAttribute("tabindex", "0");
+      slot.setAttribute("aria-label", `Seleziona ${position.name}`);
+      slot.addEventListener("click", () => selectShelfPosition(position.name));
+      slot.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectShelfPosition(position.name);
+        }
+      });
+    }
+    svg.append(slot);
+  }
+  return svg;
+}
+
+function parseLibraryLocation(value) {
+  const normalized = String(value ?? "").trim();
+  const separatorIndex = normalized.indexOf("·");
+  if (separatorIndex > 0) {
+    const library = normalized.slice(0, separatorIndex).trim();
+    const shelf = normalized.slice(separatorIndex + 1).trim();
+    if (
+      libraryNames.includes(library)
+      && shelfProfiles[library].positions.some((position) => position.name === shelf)
+    ) {
+      return { library, shelf };
+    }
+  }
+
+  if (shelfProfiles.Camera.positions.some((position) => position.name === normalized)) {
+    return { library: "Camera", shelf: normalized };
+  }
+  return { library: "", shelf: "" };
+}
+
+function updatePlacementStatus() {
+  const location = parseLibraryLocation(form.elements.location.value);
+  form.elements.reading_status.value = location.library ? "Sistemato" : "Da sistemare";
+}
+
+function selectShelfPosition(location) {
+  currentShelfSelection = location;
+  shelfMapContainer.querySelectorAll(".shelf-slot").forEach((slot) => {
+    slot.classList.toggle("selected", slot.dataset.location === location);
+  });
+  shelfSelectionText.textContent =
+    `Posizione selezionata: ${currentLibrarySelection} · ${location}`;
+  applyShelfButton.disabled = false;
+}
+
+function showSelectedLibrary(library, shelf = "") {
+  currentLibrarySelection = library;
+  currentShelfSelection = shelf;
+  libraryButtons.forEach((button) => {
+    const selected = button.dataset.library === library;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+
+  const profile = shelfProfiles[library];
+  if (!profile) {
+    shelfPickerBody.hidden = true;
+    shelfPendingMessage.hidden = false;
+    shelfPendingMessage.textContent = `La mappa della libreria ${library} non è disponibile.`;
+    applyShelfButton.disabled = true;
+    return;
+  }
+
+  shelfPendingMessage.hidden = true;
+  shelfPickerBody.hidden = false;
+  shelfMapContainer.replaceChildren(createShelfMap(library, shelf, true));
+  shelfLegend.replaceChildren();
+  for (const group of profile.groups) {
+    const item = document.createElement("li");
+    const label = document.createElement("strong");
+    label.textContent = `${group.label}: `;
+    item.append(label, document.createTextNode(`1–${group.count}`));
+    shelfLegend.append(item);
+  }
+  shelfSelectionText.textContent = shelf
+    ? `Posizione selezionata: ${library} · ${shelf}`
+    : `Ora scegli uno scaffale della libreria ${library}`;
+  applyShelfButton.disabled = !shelf;
+}
+
+function openShelfPicker() {
+  const parsed = parseLibraryLocation(form.elements.location.value);
+  currentLibrarySelection = "";
+  currentShelfSelection = "";
+  libraryButtons.forEach((button) => {
+    button.classList.remove("selected");
+    button.setAttribute("aria-pressed", "false");
+  });
+  shelfPickerBody.hidden = true;
+  shelfPendingMessage.hidden = false;
+  shelfPendingMessage.textContent = "Scegli prima una libreria.";
+  applyShelfButton.disabled = true;
+  if (parsed.library) showSelectedLibrary(parsed.library, parsed.shelf);
+  shelfDialog.showModal();
+}
+
+function closeShelfPicker() {
+  shelfDialog.close();
+}
+
+function showAuthDialog() {
+  authError.textContent = "";
+  authMessage.textContent = "";
+  if (!authDialog.open) authDialog.showModal();
+  authEmail.focus();
+}
+
+function closeAuthDialog() {
+  if (authDialog.open) authDialog.close();
+}
+
+function setAuthBusy(busy) {
+  authForm.querySelectorAll("button, input").forEach((control) => {
+    control.disabled = busy;
+  });
+}
+
+function showPasswordDialog() {
+  closeAuthDialog();
+  passwordError.textContent = "";
+  passwordMessage.textContent = "";
+  if (!passwordDialog.open) passwordDialog.showModal();
+  newPassword.focus();
+}
+
+async function initializeApp() {
+  await listenForPasswordRecovery(showPasswordDialog);
+  const session = await getSession();
+  signOutButton.hidden = !isCloudMode;
+  if (isCloudMode && !session) {
+    showAuthDialog();
+    return;
+  }
+  closeAuthDialog();
+  await loadBooks();
+}
+
+function setDialogMode(mode) {
+  dialogMode = mode;
+  const viewing = mode === "view";
+  const editing = mode === "edit";
+  form.classList.toggle("view-mode", viewing);
+  dialogTitle.textContent = viewing
+    ? "Dettagli libro"
+    : editing
+      ? "Modifica libro"
+      : "Aggiungi libro";
+  editBookButton.hidden = !viewing;
+  loanBookButton.hidden = !viewing || !bookId.value || !isCloudMode;
+  deleteButton.hidden = !editing;
+
+  form.querySelectorAll("input:not([type='hidden']), textarea").forEach((field) => {
+    field.readOnly = viewing && !field.closest(".loan-manager");
+  });
+  form.elements.reading_status.readOnly = true;
+  form.querySelectorAll("select").forEach((field) => {
+    field.disabled = viewing;
+  });
+  loanManager.hidden = true;
+}
+
+function resetPlacementUi() {
+  form.classList.remove("placement-mode");
+  placementProgress.hidden = true;
+  cancelBookButton.textContent = "Annulla";
+  formSubmitButton.textContent = "Salva libro";
+}
+
+function updateDialogCover(book = null) {
+  const coverUrl = String(book?.cover_url ?? "").trim();
+  placementCover.hidden = !coverUrl;
+  placementCoverPlaceholder.hidden = Boolean(coverUrl);
+  placementCover.alt = coverUrl ? `Copertina di ${book.title}` : "";
+  if (coverUrl) {
+    placementCover.src = coverUrl;
+  } else {
+    placementCover.removeAttribute("src");
+  }
+}
+
+function openDialog(book = null) {
+  resetPlacementUi();
+  form.reset();
+  formError.textContent = "";
+  isbnStatus.textContent = "";
+  isbnStatus.className = "isbn-status";
+  bookId.value = book?.id || "";
+
+  if (book) {
+    for (const element of form.elements) {
+      if (element.name && Object.hasOwn(book, element.name)) {
+        element.value = book[element.name] ?? "";
+      }
+    }
+  } else {
+    form.elements.language.value = "Italiano";
+  }
+  updateDialogCover(book);
+  updatePlacementStatus();
+  setDialogMode(book ? "view" : "create");
+  dialog.showModal();
+  if (book) renderLoanManager(book);
+  if (!book) isbnInput.focus();
+}
+
+function closeDialog() {
+  placementWorkflow = false;
+  resetPlacementUi();
+  dialog.close();
+}
+
+function localDateValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatLoanDate(value) {
+  if (!value) return "";
+  return new Date(`${value}T00:00:00`).toLocaleDateString("it-IT");
+}
+
+async function renderLoanManager(book) {
+  if (!isCloudMode || !book?.id) {
+    loanManager.hidden = true;
+    return;
+  }
+
+  newLoanSection.hidden = Boolean(book.loaned_to);
+  currentLoanSection.hidden = !book.loaned_to;
+  currentLoanText.textContent = book.loaned_to
+    ? `Attualmente prestato a ${book.loaned_to}.`
+    : "";
+  loanBorrower.value = "";
+  loanDate.value = localDateValue();
+  loanStatus.textContent = "";
+  loanHistory.textContent = "Caricamento storico…";
+
+  try {
+    const history = await listBookLoans(book.id);
+    if (String(bookId.value) !== String(book.id)) return;
+    loanHistory.replaceChildren();
+    if (!history.length) {
+      loanHistory.textContent = "Nessun prestito precedente.";
+      return;
+    }
+    const list = document.createElement("ul");
+    for (const loan of history) {
+      const item = document.createElement("li");
+      const returned = loan.returned_at
+        ? `restituito il ${formatLoanDate(loan.returned_at)}`
+        : "ancora in prestito";
+      item.textContent =
+        `${loan.borrower} · dal ${formatLoanDate(loan.loaned_at)} · ${returned}`;
+      list.append(item);
+    }
+    loanHistory.append(list);
+  } catch (error) {
+    loanHistory.textContent = `Storico non disponibile: ${error.message}`;
+  }
+}
+
+async function refreshBookAfterLoan(bookIdToRefresh) {
+  await loadBooks(searchInput.value);
+  const updatedBook = catalogBooks.find(
+    (book) => String(book.id) === String(bookIdToRefresh)
+  );
+  if (!updatedBook) return;
+  form.elements.loaned_to.value = updatedBook.loaned_to || "";
+  loanManager.hidden = false;
+  await renderLoanManager(updatedBook);
+}
+
+function getUnplacedBooks() {
+  return catalogBooks
+    .filter((book) => matchesQuickFilter(book, "unplaced"))
+    .sort((left, right) => {
+      const byAuthor = italianCollator.compare(
+        authorSortKey(left.authors),
+        authorSortKey(right.authors)
+      );
+      if (byAuthor) return byAuthor;
+      return italianCollator.compare(String(left.title ?? ""), String(right.title ?? ""));
+    });
+}
+
+function openPlacementBook(book) {
+  openDialog(book);
+  setDialogMode("edit");
+  form.classList.add("placement-mode");
+  dialogTitle.textContent = "Sistema libro";
+  editBookButton.hidden = true;
+  deleteButton.hidden = true;
+  form.elements.title.readOnly = true;
+  form.elements.authors.readOnly = true;
+  placementProgress.hidden = false;
+  const remaining = getUnplacedBooks().length;
+  placementProgress.textContent = `${remaining} ${
+    remaining === 1 ? "libro ancora da sistemare" : "libri ancora da sistemare"
+  }`;
+  cancelBookButton.textContent = "Esci";
+  formSubmitButton.textContent = "Salva e continua";
+  document.querySelector("#openShelfPickerButton").focus();
+}
+
+placementCover.addEventListener("error", () => {
+  placementCover.hidden = true;
+  placementCoverPlaceholder.hidden = false;
+});
+
+function startPlacementWorkflow() {
+  const pendingBooks = getUnplacedBooks();
+  if (!pendingBooks.length) return;
+  placementWorkflow = true;
+  activeQuickFilter = "unplaced";
+  searchInput.value = "";
+  applyCatalogView();
+  openPlacementBook(pendingBooks[0]);
+}
+
+function cleanIsbn(value) {
+  return String(value ?? "").toUpperCase().replace(/[^0-9X]/g, "");
+}
+
+function isValidIsbn(value) {
+  const isbn = cleanIsbn(value);
+
+  if (isbn.length === 13 && /^(978|979)\d{10}$/.test(isbn)) {
+    const sum = [...isbn.slice(0, 12)].reduce(
+      (total, digit, index) => total + Number(digit) * (index % 2 === 0 ? 1 : 3),
+      0
+    );
+    return (10 - (sum % 10)) % 10 === Number(isbn[12]);
+  }
+
+  if (isbn.length === 10 && /^\d{9}[\dX]$/.test(isbn)) {
+    const sum = [...isbn].reduce(
+      (total, digit, index) => total + (digit === "X" ? 10 : Number(digit)) * (10 - index),
+      0
+    );
+    return sum % 11 === 0;
+  }
+
+  return false;
+}
+
+function bookPayloadFrom(source = {}) {
+  const payload = Object.fromEntries(BOOK_DATA_FIELDS.map((field) => [
+    field,
+    field === "publication_year" ? source[field] ?? null : String(source[field] ?? "")
+  ]));
+  const year = Number(payload.publication_year);
+  payload.publication_year = Number.isInteger(year) && year > 0 ? year : null;
+  payload.title = payload.title.trim();
+  return payload;
+}
+
+function bookFingerprint(source) {
+  const payload = bookPayloadFrom(source);
+  return JSON.stringify(BOOK_DATA_FIELDS.map((field) => (
+    field === "publication_year"
+      ? payload[field]
+      : String(payload[field] ?? "").trim()
+  )));
+}
+
+function settleDuplicateDecision(accepted) {
+  const resolve = duplicateDecisionResolver;
+  duplicateDecisionResolver = null;
+  if (duplicateDialog.open) duplicateDialog.close();
+  if (resolve) resolve(accepted);
+}
+
+function confirmAdditionalCopy({ title, isbn, existingCount, coverUrl = "" }) {
+  if (duplicateDecisionResolver) settleDuplicateDecision(false);
+  const copies = existingCount === 1 ? "una copia" : `${existingCount} copie`;
+  const imageUrl = String(coverUrl ?? "").trim();
+  duplicateCover.hidden = !imageUrl;
+  duplicateCoverPlaceholder.hidden = Boolean(imageUrl);
+  duplicateCover.alt = imageUrl ? `Copertina di ${title || "questo libro"}` : "";
+  if (imageUrl) {
+    duplicateCover.src = imageUrl;
+  } else {
+    duplicateCover.removeAttribute("src");
+  }
+  duplicateMessage.textContent =
+    `Il catalogo contiene già ${copies} di “${title || "questo libro"}” con ISBN ${isbn}.`;
+  acceptDuplicateButton.textContent = `Aggiungi la ${existingCount + 1}ª copia`;
+  duplicateDialog.showModal();
+  return new Promise((resolve) => {
+    duplicateDecisionResolver = resolve;
+  });
+}
+
+function setBackupStatus(message, error = false) {
+  backupStatus.textContent = message;
+  backupStatus.className = `backup-status${error ? " is-error" : ""}`;
+}
+
+function setBackupBusy(busy) {
+  backupRunning = busy;
+  exportBackupButton.disabled = busy;
+  importBackupButton.disabled = busy;
+  refreshMissingCoversButton.disabled = busy;
+  closeSettingsButton.disabled = busy;
+  dismissSettingsButton.disabled = busy;
+}
+
+function getBooksWithoutCover() {
+  return catalogBooks.filter((book) => !String(book.cover_url ?? "").trim());
+}
+
+function updateCoverRefreshSummary() {
+  const missingBooks = getBooksWithoutCover();
+  const eligibleBooks = missingBooks.filter((book) => isValidIsbn(book.isbn));
+  const withoutIsbn = missingBooks.length - eligibleBooks.length;
+
+  if (!missingBooks.length) {
+    coverRefreshSummary.textContent = "Tutti i libri hanno già una copertina.";
+    refreshMissingCoversButton.disabled = true;
+    return;
+  }
+
+  coverRefreshSummary.textContent = withoutIsbn
+    ? `${missingBooks.length} libri senza copertina: posso cercarne ${eligibleBooks.length} tramite ISBN; ${withoutIsbn} non hanno un ISBN.`
+    : `${missingBooks.length} libri senza copertina: la ricerca userà i loro ISBN, uno alla volta.`;
+  refreshMissingCoversButton.disabled = backupRunning;
+}
+
+function isAppInstalled() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || window.navigator.standalone === true;
+}
+
+function syncInstallOption() {
+  if (isAppInstalled()) {
+    installAppStatus.textContent = "Libreria Casa è già installata su questo dispositivo.";
+    installAppButton.textContent = "Già installata";
+    installAppButton.disabled = true;
+    return;
+  }
+  if (deferredInstallPrompt) {
+    installAppStatus.textContent = "Installa Libreria Casa sul dispositivo per aprirla come una normale app.";
+    installAppButton.textContent = "Installa applicazione";
+    installAppButton.disabled = false;
+    return;
+  }
+  installAppStatus.textContent = "L’installazione non è disponibile in questo browser o dispositivo.";
+  installAppButton.textContent = "Installazione non disponibile";
+  installAppButton.disabled = true;
+}
+
+function resetDeleteCatalogConfirmation() {
+  deleteCatalogConfirmation.hidden = true;
+  deleteCatalogPhrase.value = "";
+  deleteCatalogButton.disabled = true;
+  deleteCatalogStatus.textContent = "";
+}
+
+function openSettingsDialog() {
+  backupFileInput.value = "";
+  setBackupStatus("");
+  resetDeleteCatalogConfirmation();
+  deleteCatalogSummary.textContent = catalogBooks.length
+    ? `Elimina definitivamente ${catalogBooks.length} ${catalogBooks.length === 1 ? "libro" : "libri"} e lo storico dei prestiti. L’account resterà attivo.`
+    : "Il catalogo è già vuoto. L’account e le impostazioni resteranno attivi.";
+  showDeleteCatalogButton.disabled = catalogBooks.length === 0;
+  updateCoverRefreshSummary();
+  syncInstallOption();
+  settingsDialog.showModal();
+}
+
+function closeSettingsDialog() {
+  if (!backupRunning && !coverRefreshRunning && !catalogDeleteRunning) settingsDialog.close();
+}
+
+async function refreshMissingCovers() {
+  const booksWithoutCover = getBooksWithoutCover();
+  const candidates = booksWithoutCover.filter((book) => isValidIsbn(book.isbn));
+  const skipped = booksWithoutCover.length - candidates.length;
+
+  if (!candidates.length) {
+    setBackupStatus("Non ci sono ISBN utilizzabili per cercare le copertine.", true);
+    return;
+  }
+
+  coverRefreshRunning = true;
+  setBackupBusy(true);
+  const lookupByIsbn = new Map();
+  const proposals = [];
+  let notFound = 0;
+  let failed = 0;
+
+  try {
+    for (let index = 0; index < candidates.length; index += 1) {
+      const book = candidates[index];
+      setBackupStatus(`Cerco la copertina ${index + 1} di ${candidates.length}: ${book.title || book.isbn}…`);
+
+      try {
+        const isbn = cleanIsbn(book.isbn);
+        if (!lookupByIsbn.has(isbn)) {
+          const metadata = await lookupBookByIsbn(isbn);
+          lookupByIsbn.set(isbn, String(metadata.cover_url ?? "").trim());
+        }
+        const coverUrl = lookupByIsbn.get(isbn);
+        if (!coverUrl) {
+          notFound += 1;
+          continue;
+        }
+        proposals.push({ book, coverUrl, selected: true });
+      } catch {
+        failed += 1;
+      }
+    }
+
+    const pieces = [`${proposals.length} proposte`, `${notFound} non trovate`];
+    if (failed) pieces.push(`${failed} non raggiungibili ora`);
+    if (skipped) pieces.push(`${skipped} senza ISBN`);
+    setBackupStatus(`Ricerca completata: ${pieces.join(", ")}.`, failed > 0);
+  } finally {
+    coverRefreshRunning = false;
+    setBackupBusy(false);
+    updateCoverRefreshSummary();
+  }
+
+  if (proposals.length) {
+    settingsDialog.close();
+    openCoverReview(proposals, { notFound, failed, skipped });
+  }
+}
+
+function openCoverReview(proposals, { notFound, failed, skipped }) {
+  coverReviewCandidates = proposals;
+  coverReviewList.replaceChildren();
+
+  for (const [index, proposal] of proposals.entries()) {
+    const item = document.createElement("label");
+    item.className = "cover-review-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = proposal.selected;
+    checkbox.dataset.coverProposalIndex = String(index);
+    checkbox.setAttribute("aria-label", `Salva la copertina proposta per ${proposal.book.title}`);
+
+    const imageWrap = document.createElement("span");
+    imageWrap.className = "cover-review-image";
+    const image = document.createElement("img");
+    image.src = proposal.coverUrl;
+    image.alt = `Copertina proposta per ${proposal.book.title}`;
+    image.loading = "lazy";
+    image.addEventListener("error", () => {
+      item.classList.add("is-unavailable");
+      checkbox.checked = false;
+      proposal.selected = false;
+      updateSelectedCoverButton();
+    });
+    imageWrap.append(image);
+
+    const details = document.createElement("span");
+    details.className = "cover-review-details";
+    const title = document.createElement("strong");
+    title.textContent = proposal.book.title || "Titolo non indicato";
+    const authors = document.createElement("span");
+    authors.textContent = proposal.book.authors || "Autore non indicato";
+    details.append(title, authors);
+
+    item.append(checkbox, imageWrap, details);
+    coverReviewList.append(item);
+  }
+
+  const notes = [];
+  if (notFound) notes.push(`${notFound} non trovate`);
+  if (failed) notes.push(`${failed} da riprovare`);
+  if (skipped) notes.push(`${skipped} senza ISBN`);
+  coverReviewSummary.textContent = notes.length
+    ? `Controlla le ${proposals.length} proposte. ${notes.join(", ")}.`
+    : `Controlla le ${proposals.length} copertine proposte prima di salvarle.`;
+  updateSelectedCoverButton();
+  coverReviewDialog.showModal();
+}
+
+function updateSelectedCoverButton() {
+  const selectedCount = coverReviewCandidates.filter((proposal) => proposal.selected).length;
+  saveSelectedCoversButton.disabled = selectedCount === 0;
+  saveSelectedCoversButton.textContent = selectedCount === 1
+    ? "Salva 1 copertina"
+    : `Salva ${selectedCount} copertine`;
+}
+
+function closeCoverReview() {
+  if (coverSaveRunning) return;
+  coverReviewDialog.close();
+  coverReviewCandidates = [];
+}
+
+async function saveSelectedCovers() {
+  const selected = coverReviewCandidates.filter((proposal) => proposal.selected);
+  if (!selected.length) return;
+
+  coverSaveRunning = true;
+  saveSelectedCoversButton.disabled = true;
+  closeCoverReviewButton.disabled = true;
+  cancelCoverReviewButton.disabled = true;
+  let saved = 0;
+  let failed = 0;
+
+  try {
+    for (let index = 0; index < selected.length; index += 1) {
+      const proposal = selected[index];
+      coverReviewSummary.textContent = `Salvo ${index + 1} di ${selected.length}: ${proposal.book.title || proposal.book.isbn}…`;
+      try {
+        await saveBook({ ...bookPayloadFrom(proposal.book), cover_url: proposal.coverUrl }, proposal.book.id);
+        saved += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    await loadBooks(searchInput.value);
+    coverReviewDialog.close();
+    coverReviewCandidates = [];
+    openSettingsDialog();
+    setBackupStatus(
+      failed
+        ? `Copertine salvate: ${saved}. ${failed} non sono state aggiornate.`
+        : `Copertine salvate: ${saved}.`,
+      failed > 0
+    );
+  } finally {
+    coverSaveRunning = false;
+    closeCoverReviewButton.disabled = false;
+    cancelCoverReviewButton.disabled = false;
+  }
+}
+
+async function deleteEntireCatalog() {
+  if (deleteCatalogPhrase.value !== "ELIMINA TUTTO") return;
+  catalogDeleteRunning = true;
+  deleteCatalogStatus.textContent = "Eliminazione del catalogo in corso…";
+  deleteCatalogButton.disabled = true;
+  cancelDeleteCatalogButton.disabled = true;
+  closeSettingsButton.disabled = true;
+  dismissSettingsButton.disabled = true;
+
+  try {
+    await clearCatalog();
+    searchInput.value = "";
+    activeQuickFilter = "all";
+    await loadBooks();
+    resetDeleteCatalogConfirmation();
+    settingsDialog.close();
+  } catch (error) {
+    deleteCatalogStatus.textContent = `Eliminazione non riuscita: ${error.message}`;
+  } finally {
+    catalogDeleteRunning = false;
+    cancelDeleteCatalogButton.disabled = false;
+    closeSettingsButton.disabled = false;
+    dismissSettingsButton.disabled = false;
+  }
+}
+
+async function exportBackup() {
+  setBackupBusy(true);
+  setBackupStatus("Preparo il backup…");
+
+  try {
+    const [catalog, loans] = await Promise.all([
+      listBooks(),
+      listAllBookLoans()
+    ]);
+    const backup = {
+      format: "libreria-casa-backup",
+      version: 2,
+      exported_at: new Date().toISOString(),
+      books: catalog.map((book) => ({
+        source_id: String(book.id ?? ""),
+        ...bookPayloadFrom(book)
+      })),
+      loans: loans.map((loan) => ({
+        source_book_id: String(loan.book_id ?? ""),
+        borrower: loan.borrower,
+        loaned_at: loan.loaned_at,
+        returned_at: loan.returned_at
+      }))
+    };
+    const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `libreria-casa-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setBackupStatus(
+      `Backup creato: ${catalog.length} ${catalog.length === 1 ? "libro" : "libri"}`
+      + ` e ${loans.length} ${loans.length === 1 ? "prestito" : "prestiti"}.`
+    );
+  } catch (error) {
+    setBackupStatus(`Esportazione non riuscita: ${error.message}`, true);
+  } finally {
+    setBackupBusy(false);
+  }
+}
+
+async function importBackupFile(file) {
+  setBackupBusy(true);
+  setBackupStatus("Controllo il file…");
+
+  try {
+    const backup = JSON.parse(await file.text());
+    if (
+      backup?.format !== "libreria-casa-backup"
+      || ![1, 2].includes(Number(backup?.version))
+      || !Array.isArray(backup.books)
+    ) {
+      throw new Error("Il file non è un backup valido di Libreria Casa.");
+    }
+
+    const currentBooks = await listBooks();
+    const existingSourceIds = new Set(
+      currentBooks.map((book) => String(book.id ?? "")).filter(Boolean)
+    );
+    const availableByFingerprint = new Map();
+    currentBooks.forEach((book) => {
+      const fingerprint = bookFingerprint(book);
+      const matches = availableByFingerprint.get(fingerprint) || [];
+      matches.push(book);
+      availableByFingerprint.set(fingerprint, matches);
+    });
+    const currentById = new Map(
+      currentBooks.map((book) => [String(book.id ?? ""), book])
+    );
+    const restoredBookIds = new Map();
+
+    let imported = 0;
+    let alreadyPresent = 0;
+    let failed = 0;
+
+    for (let index = 0; index < backup.books.length; index += 1) {
+      const record = backup.books[index];
+      const sourceId = String(record?.source_id ?? "");
+      setBackupStatus(`Importazione ${index + 1} di ${backup.books.length}…`);
+
+      if (sourceId && existingSourceIds.has(sourceId)) {
+        restoredBookIds.set(sourceId, sourceId);
+        const existingBook = currentById.get(sourceId);
+        const matches = availableByFingerprint.get(bookFingerprint(existingBook)) || [];
+        const matchIndex = matches.findIndex((book) => String(book.id) === sourceId);
+        if (matchIndex >= 0) matches.splice(matchIndex, 1);
+        alreadyPresent += 1;
+        continue;
+      }
+
+      const payload = bookPayloadFrom(record);
+      if (!payload.title) {
+        failed += 1;
+        continue;
+      }
+
+      const fingerprint = bookFingerprint(payload);
+      const matchingCopies = availableByFingerprint.get(fingerprint) || [];
+      if (matchingCopies.length > 0) {
+        const matchedBook = matchingCopies.shift();
+        if (sourceId) restoredBookIds.set(sourceId, String(matchedBook.id));
+        alreadyPresent += 1;
+        continue;
+      }
+
+      try {
+        const savedBook = await saveBook(payload);
+        if (sourceId) restoredBookIds.set(sourceId, String(savedBook.id));
+        imported += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    const loanRecords = Array.isArray(backup.loans) ? backup.loans : [];
+    const preparedLoans = loanRecords.flatMap((loan) => {
+      const targetBookId = restoredBookIds.get(String(loan?.source_book_id ?? ""));
+      if (!targetBookId || !loan?.borrower || !loan?.loaned_at) return [];
+      return [{
+        book_id: targetBookId,
+        borrower: loan.borrower,
+        loaned_at: loan.loaned_at,
+        returned_at: loan.returned_at || null
+      }];
+    });
+    const loanResult = await importBookLoans(preparedLoans);
+
+    await loadBooks(searchInput.value);
+    setBackupStatus(
+      `Importazione completata: ${imported} aggiunti, ${alreadyPresent} già presenti`
+      + `${failed ? `, ${failed} non riusciti` : ""}; `
+      + `${loanResult.imported} prestiti ripristinati`
+      + `${loanResult.alreadyPresent ? `, ${loanResult.alreadyPresent} già presenti` : ""}`
+      + `${loanResult.failed ? `, ${loanResult.failed} prestiti non riusciti` : ""}.`,
+      failed > 0 || loanResult.failed > 0
+    );
+  } catch (error) {
+    setBackupStatus(`Importazione non riuscita: ${error.message}`, true);
+  } finally {
+    backupFileInput.value = "";
+    setBackupBusy(false);
+  }
+}
+
+function enteredIsbns() {
+  return bulkIsbnInput.value
+    .split(/\r?\n/)
+    .map(cleanIsbn)
+    .filter(Boolean);
+}
+
+function updateBulkEntryCount() {
+  const codes = enteredIsbns();
+  bulkEntryCount.textContent = `${codes.length} ${codes.length === 1 ? "codice" : "codici"}`;
+}
+
+function setScannerStatus(message, state = "") {
+  scannerStatus.textContent = message;
+  scannerStatus.className = "scanner-status";
+  if (state) scannerStatus.classList.add(`is-${state}`);
+}
+
+function loadScannerLibrary() {
+  if (window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
+  if (scannerLibraryPromise) return scannerLibraryPromise;
+
+  scannerLibraryPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/@zxing/browser@0.2.0/umd/zxing-browser.min.js";
+    script.async = true;
+    script.dataset.barcodeScanner = "true";
+    script.addEventListener("load", () => resolve(window.ZXingBrowser));
+    script.addEventListener("error", () => reject(new Error("Impossibile caricare lo scanner.")));
+    document.head.append(script);
+  }).catch((error) => {
+    scannerLibraryPromise = null;
+    throw error;
+  });
+
+  return scannerLibraryPromise;
+}
+
+function waitForScannerVideo(video) {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => finish(new Error("video-timeout")), 4000);
+
+    function finish(error) {
+      window.clearTimeout(timeout);
+      video.removeEventListener("loadeddata", handleLoaded);
+      video.removeEventListener("error", handleError);
+      if (error) reject(error);
+      else resolve();
+    }
+
+    function handleLoaded() {
+      finish();
+    }
+
+    function handleError() {
+      finish(new Error("video-error"));
+    }
+
+    video.addEventListener("loadeddata", handleLoaded, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+  });
+}
+
+async function createNativeBarcodeControls(video, onResult) {
+  const NativeBarcodeDetector = window.BarcodeDetector;
+  if (typeof NativeBarcodeDetector !== "function") return null;
+
+  try {
+    if (typeof NativeBarcodeDetector.getSupportedFormats === "function") {
+      const supportedFormats = await NativeBarcodeDetector.getSupportedFormats();
+      if (!supportedFormats.includes("ean_13")) return null;
+    }
+
+    const detector = new NativeBarcodeDetector({ formats: ["ean_13"] });
+    await waitForScannerVideo(video);
+    await video.play();
+
+    let stopped = false;
+    let timer = 0;
+    let videoFrameRequest = 0;
+
+    const processDetections = (detections) => {
+      detections.forEach((detection) => {
+        if (detection.rawValue) onResult(detection.rawValue);
+      });
+    };
+
+    // La prima lettura conferma che il browser accetti davvero il flusso video.
+    processDetections(await detector.detect(video));
+
+    const scheduleNextFrame = () => {
+      if (stopped) return;
+      if (typeof video.requestVideoFrameCallback === "function") {
+        videoFrameRequest = video.requestVideoFrameCallback(scanFrame);
+      } else {
+        timer = window.setTimeout(scanFrame, 140);
+      }
+    };
+
+    const scanFrame = async () => {
+      if (stopped) return;
+      try {
+        processDetections(await detector.detect(video));
+      } catch {
+        // Un singolo fotogramma non leggibile non deve interrompere la scansione.
+      }
+      scheduleNextFrame();
+    };
+
+    scheduleNextFrame();
+
+    return {
+      stop() {
+        stopped = true;
+        window.clearTimeout(timer);
+        if (videoFrameRequest && typeof video.cancelVideoFrameCallback === "function") {
+          video.cancelVideoFrameCallback(videoFrameRequest);
+        }
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
+function addScannedIsbn(rawValue) {
+  const isbn = cleanIsbn(rawValue);
+  const now = Date.now();
+  if (isbn === lastScannedCode && now - lastScanTime < 2000) return;
+  lastScannedCode = isbn;
+  lastScanTime = now;
+
+  if (!isValidIsbn(isbn)) {
+    setScannerStatus(`Codice ${isbn || "non leggibile"}: non è un ISBN valido.`, "error");
+    return;
+  }
+
+  if (enteredIsbns().includes(isbn)) {
+    setScannerStatus(`${isbn} è già presente nell’elenco.`, "duplicate");
+    return;
+  }
+
+  const currentValue = bulkIsbnInput.value.trimEnd();
+  bulkIsbnInput.value = `${currentValue}${currentValue ? "\n" : ""}${isbn}\n`;
+  updateBulkEntryCount();
+  bulkIsbnInput.scrollTop = bulkIsbnInput.scrollHeight;
+  setScannerStatus(`Acquisito: ${isbn} · ${bulkEntryCount.textContent}.`, "success");
+  if (navigator.vibrate) navigator.vibrate(80);
+}
+
+function releaseScannerCamera() {
+  if (scannerControls) {
+    scannerControls.stop();
+    scannerControls = null;
+  }
+  const stream = barcodeVideo.srcObject;
+  if (stream) stream.getTracks().forEach((track) => track.stop());
+  barcodeVideo.srcObject = null;
+  scannerTrack = null;
+  focusScannerButton.disabled = true;
+}
+
+async function getRearCameraStream() {
+  const preferredVideo = {
+    facingMode: { exact: "environment" },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { ideal: 30 }
+  };
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: false, video: preferredVideo });
+  } catch (error) {
+    if (error?.name !== "OverconstrainedError" && error?.name !== "NotFoundError") throw error;
+    return navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
+      }
+    });
+  }
+}
+
+function scannerFocusModes() {
+  try {
+    return scannerTrack?.getCapabilities?.().focusMode || [];
+  } catch {
+    return [];
+  }
+}
+
+async function enableContinuousFocus() {
+  if (!scannerTrack) return false;
+  const focusModes = scannerFocusModes();
+  if (!focusModes.includes("continuous")) return false;
+  await scannerTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+  return true;
+}
+
+async function refocusScannerCamera() {
+  if (!scannerTrack) return;
+  focusScannerButton.disabled = true;
+  setScannerStatus("Regolo la messa a fuoco…");
+
+  try {
+    const focusModes = scannerFocusModes();
+    if (focusModes.includes("single-shot")) {
+      await scannerTrack.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
+    } else if (focusModes.includes("continuous")) {
+      await scannerTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+    } else {
+      throw new Error("focus-not-supported");
+    }
+    setScannerStatus("Messa a fuoco aggiornata. Inquadra il codice nel riquadro.");
+  } catch {
+    setScannerStatus("Allontana leggermente il telefono e tienilo fermo sul codice.", "duplicate");
+  } finally {
+    focusScannerButton.disabled = false;
+  }
+}
+
+function stopBarcodeScanner({ hide = true } = {}) {
+  scannerSession += 1;
+  releaseScannerCamera();
+  startScannerButton.disabled = bulkRunning;
+  startScannerButton.hidden = false;
+  startScannerButton.textContent = "Avvia fotocamera";
+  if (hide) {
+    barcodeScanner.hidden = true;
+    setScannerStatus("Inquadra il codice a barre sul retro del libro.");
+    if (bulkDialog.open) bulkIsbnInput.focus();
+  }
+}
+
+function scannerErrorMessage(error) {
+  if (error?.name === "NotAllowedError") {
+    return "Permesso fotocamera negato. Abilitalo nelle impostazioni del browser e riprova.";
+  }
+  if (error?.name === "NotFoundError" || error?.name === "OverconstrainedError") {
+    return "Non è stata trovata una fotocamera posteriore disponibile.";
+  }
+  if (error?.name === "NotReadableError") {
+    return "La fotocamera è già utilizzata da un’altra applicazione.";
+  }
+  return error?.message || "Non riesco ad avviare la fotocamera.";
+}
+
+async function startBarcodeScanner() {
+  if (bulkRunning || scannerControls) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    barcodeScanner.hidden = false;
+    setScannerStatus("Questo browser non consente l’uso della fotocamera. Puoi continuare con la pistola scanner.", "error");
+    return;
+  }
+
+  barcodeScanner.hidden = false;
+  startScannerButton.disabled = true;
+  startScannerButton.hidden = true;
+  startScannerButton.textContent = "Avvio fotocamera…";
+  setScannerStatus("Sto preparando la fotocamera…");
+  lastScannedCode = "";
+  lastScanTime = 0;
+  const session = ++scannerSession;
+  let stream = null;
+
+  try {
+    stream = await getRearCameraStream();
+    if (session !== scannerSession || !bulkDialog.open) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    barcodeVideo.srcObject = stream;
+    scannerTrack = stream.getVideoTracks()[0] || null;
+    focusScannerButton.disabled = !scannerTrack;
+    await enableContinuousFocus().catch(() => false);
+
+    let controls = await createNativeBarcodeControls(barcodeVideo, (rawValue) => {
+      if (session === scannerSession) addScannedIsbn(rawValue);
+    });
+    const usingNativeDetector = Boolean(controls);
+
+    if (!controls) {
+      const ZXingBrowser = await loadScannerLibrary();
+      if (session !== scannerSession || !bulkDialog.open) return;
+      if (
+        !ZXingBrowser?.BrowserMultiFormatOneDReader
+        && !ZXingBrowser?.BrowserMultiFormatReader
+      ) {
+        throw new Error("Scanner non disponibile.");
+      }
+
+      const Reader = ZXingBrowser.BrowserMultiFormatOneDReader
+        || ZXingBrowser.BrowserMultiFormatReader;
+      const reader = new Reader();
+      controls = await reader.decodeFromStream(
+        stream,
+        barcodeVideo,
+        (result) => {
+          if (result && session === scannerSession) addScannedIsbn(result.getText());
+        }
+      );
+    }
+
+    if (session !== scannerSession || !bulkDialog.open) {
+      controls.stop();
+      return;
+    }
+    scannerControls = controls;
+    startScannerButton.textContent = "Fotocamera attiva";
+    setScannerStatus(
+      usingNativeDetector
+        ? "Lettore Android attivo: inquadra l’ISBN."
+        : "Fotocamera pronta: l’ISBN verrà aggiunto appena riconosciuto."
+    );
+  } catch (error) {
+    if (stream && barcodeVideo.srcObject !== stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    releaseScannerCamera();
+    if (session !== scannerSession) return;
+    startScannerButton.disabled = false;
+    startScannerButton.hidden = false;
+    startScannerButton.textContent = "Riprova fotocamera";
+    setScannerStatus(scannerErrorMessage(error), "error");
+  }
+}
+
+function openBulkDialog() {
+  stopBarcodeScanner();
+  bulkIsbnInput.value = "";
+  bulkProgress.textContent = "";
+  bulkResults.replaceChildren();
+  startBulkButton.disabled = false;
+  startBulkButton.textContent = "Importa libri";
+  updateBulkEntryCount();
+  bulkDialog.showModal();
+  if (!window.matchMedia("(pointer: coarse)").matches) {
+    bulkIsbnInput.focus();
+  }
+}
+
+function closeBulkDialog() {
+  if (!bulkRunning) {
+    stopBarcodeScanner();
+    bulkDialog.close();
+  }
+}
+
+function addBulkResult(isbn, state, message) {
+  const item = document.createElement("li");
+  item.className = `bulk-result ${state}`;
+  const code = document.createElement("strong");
+  code.textContent = isbn;
+  const detail = document.createElement("span");
+  detail.textContent = message;
+  item.append(code, detail);
+  if (state === "failed") {
+    const manualButton = document.createElement("button");
+    manualButton.className = "bulk-manual-button";
+    manualButton.type = "button";
+    manualButton.textContent = "Compila a mano";
+    manualButton.disabled = bulkRunning;
+    manualButton.addEventListener("click", () => {
+      if (bulkRunning) return;
+      bulkDialog.close();
+      openDialog();
+      isbnInput.value = isbn;
+      isbnStatus.textContent = "Metadati non disponibili: completa la scheda manualmente.";
+      isbnStatus.classList.add("is-error");
+      form.elements.title.focus();
+    });
+    item.append(manualButton);
+  }
+  bulkResults.append(item);
+}
+
+async function importMultipleIsbns() {
+  const isbns = enteredIsbns();
+
+  bulkResults.replaceChildren();
+  if (!isbns.length) {
+    bulkProgress.textContent = "Inserisci almeno un ISBN.";
+    bulkIsbnInput.focus();
+    return;
+  }
+
+  stopBarcodeScanner();
+  bulkRunning = true;
+  startBulkButton.disabled = true;
+  closeBulkButton.disabled = true;
+  cancelBulkButton.disabled = true;
+  startScannerButton.disabled = true;
+  let imported = 0;
+  let notImported = 0;
+  let failed = 0;
+
+  try {
+    const allBooks = await listBooks();
+    const existingByIsbn = new Map();
+    allBooks.forEach((book) => {
+      const isbn = cleanIsbn(book.isbn);
+      if (!isbn) return;
+      const matchingBooks = existingByIsbn.get(isbn) || [];
+      matchingBooks.push(book);
+      existingByIsbn.set(isbn, matchingBooks);
+    });
+
+    for (let index = 0; index < isbns.length; index += 1) {
+      const isbn = isbns[index];
+      bulkProgress.textContent = `Elaborazione ${index + 1} di ${isbns.length}: ${isbn}`;
+
+      const matchingBooks = existingByIsbn.get(isbn) || [];
+      if (matchingBooks.length) {
+        const accepted = await confirmAdditionalCopy({
+          title: matchingBooks[0].title,
+          isbn,
+          existingCount: matchingBooks.length,
+          coverUrl: matchingBooks[0].cover_url
+        });
+        if (!accepted) {
+          notImported += 1;
+          addBulkResult(isbn, "skipped", "Non importato: possibile doppione");
+          continue;
+        }
+      }
+
+      try {
+        const metadata = await lookupBookByIsbn(isbn);
+        await saveBook(metadata);
+        imported += 1;
+        const copies = existingByIsbn.get(isbn) || [];
+        copies.push(metadata);
+        existingByIsbn.set(isbn, copies);
+        addBulkResult(isbn, "success", metadata.title);
+      } catch (error) {
+        failed += 1;
+        addBulkResult(isbn, "failed", error.message);
+      }
+
+      if (index < isbns.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1050));
+      }
+    }
+
+    bulkProgress.textContent =
+      `Completato: ${imported} importati, ${notImported} non importati, ${failed} non riusciti.`;
+    await loadBooks(searchInput.value);
+  } catch (error) {
+    bulkProgress.textContent = `Importazione interrotta: ${error.message}`;
+  } finally {
+    bulkRunning = false;
+    startBulkButton.disabled = false;
+    closeBulkButton.disabled = false;
+    cancelBulkButton.disabled = false;
+    startScannerButton.disabled = false;
+    bulkResults.querySelectorAll(".bulk-manual-button").forEach((button) => {
+      button.disabled = false;
+    });
+    startBulkButton.textContent = "Importa altri";
+  }
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (dialogMode === "view") return;
+  formError.textContent = "";
+  const payload = bookPayloadFrom(Object.fromEntries(new FormData(form)));
+  const id = bookId.value;
+  formSubmitButton.disabled = true;
+  try {
+    const isbn = cleanIsbn(payload.isbn);
+    if (isbn) {
+      const allBooks = await listBooks();
+      const originalBook = id
+        ? allBooks.find((book) => String(book.id) === String(id))
+        : null;
+      const isbnChanged = !originalBook || cleanIsbn(originalBook.isbn) !== isbn;
+      const matchingBooks = isbnChanged
+        ? allBooks.filter((book) => String(book.id) !== String(id) && cleanIsbn(book.isbn) === isbn)
+        : [];
+
+      if (matchingBooks.length) {
+        const accepted = await confirmAdditionalCopy({
+          title: matchingBooks[0].title || payload.title,
+          isbn,
+          existingCount: matchingBooks.length,
+          coverUrl: matchingBooks[0].cover_url || payload.cover_url
+        });
+        if (!accepted) {
+          formError.textContent = "Salvataggio annullato: il libro era già presente.";
+          return;
+        }
+      }
+    }
+
+    const continuePlacement = placementWorkflow;
+    await saveBook(payload, id);
+    if (!continuePlacement) {
+      closeDialog();
+      await loadBooks(searchInput.value);
+      return;
+    }
+
+    dialog.close();
+    await loadBooks("");
+    const pendingBooks = getUnplacedBooks();
+    if (pendingBooks.length) {
+      openPlacementBook(pendingBooks[0]);
+    } else {
+      placementWorkflow = false;
+      resetPlacementUi();
+      applyCatalogView();
+    }
+  } catch (error) {
+    formError.textContent = error.message;
+  } finally {
+    formSubmitButton.disabled = false;
+  }
+});
+
+lookupIsbnButton.addEventListener("click", async () => {
+  const isbn = isbnInput.value.trim();
+  isbnStatus.className = "isbn-status";
+  if (!isbn) {
+    isbnStatus.textContent = "Inserisci prima un codice ISBN.";
+    isbnStatus.classList.add("is-error");
+    isbnInput.focus();
+    return;
+  }
+
+  lookupIsbnButton.disabled = true;
+  lookupIsbnButton.textContent = "Ricerca…";
+  isbnStatus.textContent = "Sto cercando titolo, autore e copertina…";
+  try {
+    const metadata = await lookupBookByIsbn(isbn);
+    for (const [name, value] of Object.entries(metadata)) {
+      const field = form.elements[name];
+      if (field && value !== null && value !== "") field.value = value;
+    }
+    isbnStatus.textContent = "Libro trovato. Controlla i dati e premi “Salva libro”.";
+    isbnStatus.classList.add("is-success");
+  } catch (error) {
+    isbnStatus.textContent = error.message;
+    isbnStatus.classList.add("is-error");
+  } finally {
+    lookupIsbnButton.disabled = false;
+    lookupIsbnButton.textContent = "Cerca libro";
+  }
+});
+
+isbnInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    lookupIsbnButton.click();
+  }
+});
+
+deleteButton.addEventListener("click", async () => {
+  const book = books.find((item) => String(item.id) === bookId.value);
+  if (!book || !confirm(`Eliminare “${book.title}”?`)) return;
+  try {
+    await removeBook(book.id);
+    closeDialog();
+    await loadBooks(searchInput.value);
+  } catch (error) {
+    formError.textContent = error.message;
+  }
+});
+
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => applyCatalogView(), 120);
+});
+
+grid.addEventListener("click", (event) => {
+  const button = event.target.closest(".card-button");
+  if (!button || !grid.contains(button)) return;
+  const book = catalogBookById.get(button.dataset.bookId);
+  if (book) openDialog(book);
+});
+
+searchField.addEventListener("change", () => {
+  clearTimeout(searchTimer);
+  applyCatalogView();
+});
+
+sortField.addEventListener("change", () => {
+  if (sortField.value === "created_at") sortAscending = false;
+  applyCatalogView();
+});
+sortDirectionButton.addEventListener("click", () => {
+  sortAscending = !sortAscending;
+  applyCatalogView();
+});
+
+quickFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeQuickFilter = button.dataset.quickFilter;
+    applyCatalogView();
+  });
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  authError.textContent = "";
+  authMessage.textContent = "";
+  setAuthBusy(true);
+  try {
+    await signIn(authEmail.value.trim(), authPassword.value);
+    closeAuthDialog();
+    authForm.reset();
+    await loadBooks();
+  } catch (error) {
+    authError.textContent = error.message;
+  } finally {
+    setAuthBusy(false);
+  }
+});
+
+signUpButton.addEventListener("click", async () => {
+  if (!authForm.reportValidity()) return;
+  authError.textContent = "";
+  authMessage.textContent = "";
+  setAuthBusy(true);
+  try {
+    const result = await signUp(authEmail.value.trim(), authPassword.value);
+    if (result.session) {
+      closeAuthDialog();
+      authForm.reset();
+      await loadBooks();
+    } else {
+      authMessage.textContent = "Account creato. Controlla l’email per confermare l’accesso.";
+    }
+  } catch (error) {
+    authError.textContent = error.message;
+  } finally {
+    setAuthBusy(false);
+  }
+});
+
+forgotPasswordButton.addEventListener("click", async () => {
+  if (!authEmail.reportValidity()) return;
+  authError.textContent = "";
+  authMessage.textContent = "";
+  setAuthBusy(true);
+  try {
+    await requestPasswordReset(authEmail.value.trim());
+    authMessage.textContent = "Email inviata. Apri il link ricevuto per scegliere una nuova password.";
+  } catch (error) {
+    authError.textContent = error.message;
+  } finally {
+    setAuthBusy(false);
+  }
+});
+
+passwordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  passwordError.textContent = "";
+  passwordMessage.textContent = "";
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.textContent = "Le due password non coincidono.";
+    return;
+  }
+  passwordForm.querySelectorAll("button, input").forEach((control) => {
+    control.disabled = true;
+  });
+  try {
+    await updatePassword(newPassword.value);
+    passwordMessage.textContent = "Password aggiornata correttamente.";
+    passwordForm.reset();
+    window.setTimeout(async () => {
+      passwordDialog.close();
+      history.replaceState({}, "", `${location.origin}${location.pathname}`);
+      await loadBooks();
+    }, 900);
+  } catch (error) {
+    passwordError.textContent = error.message;
+  } finally {
+    passwordForm.querySelectorAll("button, input").forEach((control) => {
+      control.disabled = false;
+    });
+  }
+});
+
+cancelPasswordButton.addEventListener("click", () => passwordDialog.close());
+installAppButton.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  syncInstallOption();
+});
+
+signOutButton.addEventListener("click", async () => {
+  await signOut();
+  catalogBooks = [];
+  books = [];
+  activeQuickFilter = "all";
+  renderQuickFilters();
+  renderBooks();
+  showAuthDialog();
+});
+
+importLocalButton.addEventListener("click", async () => {
+  importLocalButton.disabled = true;
+  importLocalButton.textContent = "Importazione in corso…";
+  try {
+    const response = await fetch("/api/books?q=&field=all");
+    const localBooks = await response.json();
+    if (!response.ok) throw new Error(localBooks.error || "Archivio locale non disponibile");
+    for (const localBook of localBooks) {
+      await saveBook(bookPayloadFrom(localBook));
+    }
+    await loadBooks();
+  } catch (error) {
+    grid.textContent = `Importazione non riuscita: ${error.message}`;
+  } finally {
+    importLocalButton.disabled = false;
+    importLocalButton.textContent = "Importa l’archivio locale";
+  }
+});
+
+document.querySelector("#addBookButton").addEventListener("click", () => openDialog());
+document.querySelector("#emptyAddButton").addEventListener("click", () => openDialog());
+document.querySelector("#bulkImportButton").addEventListener("click", openBulkDialog);
+settingsButton.addEventListener("click", openSettingsDialog);
+closeSettingsButton.addEventListener("click", closeSettingsDialog);
+dismissSettingsButton.addEventListener("click", closeSettingsDialog);
+exportBackupButton.addEventListener("click", exportBackup);
+importBackupButton.addEventListener("click", () => backupFileInput.click());
+refreshMissingCoversButton.addEventListener("click", refreshMissingCovers);
+closeCoverReviewButton.addEventListener("click", closeCoverReview);
+cancelCoverReviewButton.addEventListener("click", closeCoverReview);
+saveSelectedCoversButton.addEventListener("click", saveSelectedCovers);
+coverReviewList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-cover-proposal-index]");
+  if (!checkbox) return;
+  const index = Number(checkbox.dataset.coverProposalIndex);
+  if (!coverReviewCandidates[index]) return;
+  coverReviewCandidates[index].selected = checkbox.checked;
+  updateSelectedCoverButton();
+});
+backupFileInput.addEventListener("change", () => {
+  const [file] = backupFileInput.files;
+  if (file) importBackupFile(file);
+});
+showDeleteCatalogButton.addEventListener("click", () => {
+  deleteCatalogConfirmation.hidden = false;
+  showDeleteCatalogButton.disabled = true;
+  deleteCatalogPhrase.focus();
+});
+cancelDeleteCatalogButton.addEventListener("click", () => {
+  resetDeleteCatalogConfirmation();
+  showDeleteCatalogButton.disabled = catalogBooks.length === 0;
+});
+deleteCatalogPhrase.addEventListener("input", () => {
+  deleteCatalogButton.disabled = deleteCatalogPhrase.value !== "ELIMINA TUTTO";
+});
+deleteCatalogButton.addEventListener("click", deleteEntireCatalog);
+rejectDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
+closeDuplicateButton.addEventListener("click", () => settleDuplicateDecision(false));
+acceptDuplicateButton.addEventListener("click", () => settleDuplicateDecision(true));
+duplicateCover.addEventListener("error", () => {
+  duplicateCover.hidden = true;
+  duplicateCoverPlaceholder.hidden = false;
+});
+document.querySelector("#openShelfPickerButton").addEventListener("click", openShelfPicker);
+loanBookButton.addEventListener("click", async () => {
+  const opening = loanManager.hidden;
+  loanManager.hidden = !opening;
+  if (!opening) return;
+  const book = catalogBooks.find((item) => String(item.id) === String(bookId.value));
+  if (!book) return;
+  await renderLoanManager(book);
+  loanManager.scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+lendBookButton.addEventListener("click", async () => {
+  const borrower = loanBorrower.value.trim();
+  if (!borrower) {
+    loanStatus.textContent = "Inserisci il nome della persona.";
+    loanBorrower.focus();
+    return;
+  }
+  const currentBookId = bookId.value;
+  lendBookButton.disabled = true;
+  loanStatus.textContent = "Registrazione…";
+  try {
+    await lendBook(currentBookId, borrower, loanDate.value || localDateValue());
+    await refreshBookAfterLoan(currentBookId);
+    loanStatus.textContent = "Prestito registrato.";
+  } catch (error) {
+    loanStatus.textContent = error.message;
+  } finally {
+    lendBookButton.disabled = false;
+  }
+});
+returnBookButton.addEventListener("click", async () => {
+  const currentBookId = bookId.value;
+  returnBookButton.disabled = true;
+  loanStatus.textContent = "Registrazione…";
+  try {
+    await returnBook(currentBookId);
+    await refreshBookAfterLoan(currentBookId);
+    loanStatus.textContent = "Libro restituito.";
+  } catch (error) {
+    loanStatus.textContent = error.message;
+  } finally {
+    returnBookButton.disabled = false;
+  }
+});
+editBookButton.addEventListener("click", () => {
+  setDialogMode("edit");
+  form.elements.title.focus();
+});
+placementModeButton.addEventListener("click", startPlacementWorkflow);
+closeBookButton.addEventListener("click", closeDialog);
+cancelBookButton.addEventListener("click", closeDialog);
+closeBulkButton.addEventListener("click", closeBulkDialog);
+cancelBulkButton.addEventListener("click", closeBulkDialog);
+startBulkButton.addEventListener("click", importMultipleIsbns);
+startScannerButton.addEventListener("click", startBarcodeScanner);
+stopScannerButton.addEventListener("click", () => stopBarcodeScanner());
+focusScannerButton.addEventListener("click", refocusScannerCamera);
+barcodeVideo.addEventListener("click", refocusScannerCamera);
+bulkIsbnInput.addEventListener("input", updateBulkEntryCount);
+document.querySelector("#closeShelfButton").addEventListener("click", closeShelfPicker);
+document.querySelector("#cancelShelfButton").addEventListener("click", closeShelfPicker);
+libraryButtons.forEach((button) => {
+  button.addEventListener("click", () => showSelectedLibrary(button.dataset.library));
+});
+applyShelfButton.addEventListener("click", () => {
+  if (!currentLibrarySelection || !currentShelfSelection) return;
+  form.elements.location.value = `${currentLibrarySelection} · ${currentShelfSelection}`;
+  updatePlacementStatus();
+  closeShelfPicker();
+});
+form.elements.location.addEventListener("input", updatePlacementStatus);
+bulkDialog.addEventListener("cancel", (event) => {
+  if (bulkRunning) {
+    event.preventDefault();
+  } else {
+    stopBarcodeScanner();
+  }
+});
+bulkDialog.addEventListener("close", () => stopBarcodeScanner());
+dialog.addEventListener("click", (event) => {
+  if (event.target === dialog) closeDialog();
+});
+dialog.addEventListener("cancel", () => {
+  placementWorkflow = false;
+  resetPlacementUi();
+});
+bulkDialog.addEventListener("click", (event) => {
+  if (event.target === bulkDialog) closeBulkDialog();
+});
+shelfDialog.addEventListener("click", (event) => {
+  if (event.target === shelfDialog) closeShelfPicker();
+});
+authDialog.addEventListener("cancel", (event) => event.preventDefault());
+settingsDialog.addEventListener("cancel", (event) => {
+  if (backupRunning || catalogDeleteRunning) event.preventDefault();
+});
+settingsDialog.addEventListener("click", (event) => {
+  if (event.target === settingsDialog) closeSettingsDialog();
+});
+coverReviewDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeCoverReview();
+});
+coverReviewDialog.addEventListener("click", (event) => {
+  if (event.target === coverReviewDialog) closeCoverReview();
+});
+duplicateDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  settleDuplicateDecision(false);
+});
+duplicateDialog.addEventListener("click", (event) => {
+  if (event.target === duplicateDialog) settleDuplicateDecision(false);
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && scannerControls) stopBarcodeScanner();
+});
+
+initializeApp().catch((error) => {
+  grid.textContent = `Impossibile caricare il catalogo: ${error.message}`;
+  if (isCloudMode) {
+    showAuthDialog();
+    authError.textContent = error.message;
+  }
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js?v=20260703-pwa4").catch(() => {});
+  });
+}

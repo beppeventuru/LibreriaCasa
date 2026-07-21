@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f35">
+  <title>Libreria Casa</title>
+  <link rel="manifest" href="manifest.webmanifest?v=20260706-portrait1">
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://books.google.com" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=20260714-cover-review1">
+</head>
+<body>
+  <div class="app-header">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Libreria Casa">
+      <span class="brand-mark" aria-hidden="true">LC</span>
+      <span>Libreria Casa</span>
+    </a>
+    <div class="header-search-group">
+      <div class="search header-search" role="search">
+        <span aria-hidden="true">⌕</span>
+        <select id="searchField" aria-label="Ambito della ricerca">
+          <option value="all">Tutti i campi</option>
+          <option value="title">Titolo</option>
+          <option value="authors">Autore</option>
+          <option value="isbn">ISBN</option>
+          <option value="publisher">Editore</option>
+          <option value="publication_year">Anno</option>
+          <option value="language">Lingua</option>
+          <option value="location">Collocazione</option>
+          <option value="reading_status">Sistemazione</option>
+          <option value="loaned_to">Prestato a</option>
+          <option value="tags">Tag</option>
+          <option value="notes">Note</option>
+          <option value="cover_url">URL copertina</option>
+        </select>
+        <input id="searchInput" type="search" aria-label="Testo da cercare" placeholder="Cerca nella libreria">
+      </div>
+      <p id="bookCount" class="count" aria-live="polite"></p>
+    </div>
+    <div class="topbar-actions">
+      <button class="header-secondary" id="signOutButton" type="button" hidden>Esci</button>
+      <button class="header-secondary" id="settingsButton" type="button" aria-label="Impostazioni">
+        <span class="wide-label">Impostazioni</span><span class="compact-label" aria-hidden="true">⚙</span>
+      </button>
+      <button class="header-secondary" id="bulkImportButton" type="button" aria-label="Importa più ISBN">
+        <span class="wide-label">Importa più ISBN</span><span class="compact-label">ISBN</span>
+      </button>
+      <button class="primary" id="addBookButton" type="button" aria-label="Aggiungi libro">
+        <span class="wide-label">＋ Aggiungi libro</span><span class="compact-label">＋ Libro</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="quick-filter-shell">
+    <nav id="quickFilters" class="quick-filters" aria-label="Filtri rapidi">
+      <label class="quick-sort">
+        <span>Ordina</span>
+        <select id="sortField" aria-label="Ordina i libri per">
+          <option value="title">Titolo</option>
+          <option value="authors">Autore</option>
+          <option value="publisher">Editore</option>
+          <option value="publication_year">Anno</option>
+          <option value="created_at">Ultimo inserito</option>
+        </select>
+      </label>
+      <button class="sort-direction" id="sortDirectionButton" type="button" aria-label="Ordine dalla A alla Z">
+        A–Z
+      </button>
+      <button class="placement-start" id="placementModeButton" type="button">Sistema libri</button>
+      <button type="button" data-quick-filter="all" aria-pressed="true">
+        Tutti <span data-quick-count>0</span>
+      </button>
+    </nav>
+  </div>
+  </div>
+
+  <main>
+    <section id="emptyState" class="empty" hidden>
+      <div class="empty-icon" aria-hidden="true">⌑</div>
+      <h2>La tua libreria comincia da qui</h2>
+      <p>Inserisci l’ISBN per caricare automaticamente i dati oppure compila la scheda manualmente.</p>
+      <div class="empty-actions">
+        <button class="primary" id="emptyAddButton" type="button">Aggiungi il primo libro</button>
+        <button class="secondary" id="importLocalButton" type="button" hidden>Importa l’archivio locale</button>
+      </div>
+    </section>
+
+    <section id="bookGrid" class="book-grid" aria-label="Catalogo dei libri"></section>
+  </main>
+
+  <dialog class="auth-dialog" id="authDialog">
+    <form id="authForm">
+      <p class="eyebrow">Archivio personale</p>
+      <h2>Accedi alla tua libreria</h2>
+      <p class="auth-intro">Inserisci le credenziali usate per il tuo archivio online.</p>
+      <label>Email
+        <input id="authEmail" type="email" autocomplete="email" required>
+      </label>
+      <label>Password
+        <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required>
+      </label>
+      <button class="forgot-password" id="forgotPasswordButton" type="button">Password dimenticata?</button>
+      <p class="error" id="authError" role="alert"></p>
+      <p class="auth-message" id="authMessage" role="status"></p>
+      <div class="dialog-actions">
+        <button class="secondary" id="signUpButton" type="button">Crea account</button>
+        <span class="spacer"></span>
+        <button class="primary" type="submit">Accedi</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="auth-dialog" id="passwordDialog">
+    <form id="passwordForm">
+      <p class="eyebrow">Sicurezza</p>
+      <h2>Scegli una nuova password</h2>
+      <p class="auth-intro">Inserisci almeno 6 caratteri.</p>
+      <label>Nuova password
+        <input id="newPassword" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <label>Ripeti la password
+        <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <p class="error" id="passwordError" role="alert"></p>
+      <p class="auth-message" id="passwordMessage" role="status"></p>
+      <div class="dialog-actions">
+        <button class="secondary" id="cancelPasswordButton" type="button">Annulla</button>
+        <span class="spacer"></span>
+        <button class="primary" type="submit">Aggiorna password</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="bookDialog">
+    <form id="bookForm">
+      <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Scheda del volume</p>
+        <h2 id="dialogTitle">Aggiungi libro</h2>
+      </div>
+      <div class="dialog-header-actions">
+        <button class="secondary loan-book-button" id="loanBookButton" type="button" hidden>Prestito</button>
+        <button class="edit-book-button" id="editBookButton" type="button" hidden>Modifica</button>
+        <button class="icon-button" id="closeDialogButton" type="button" aria-label="Chiudi">×</button>
+      </div>
+      </div>
+
+      <input id="bookId" type="hidden">
+      <div class="book-form-scroll">
+        <p id="placementProgress" class="placement-progress" hidden></p>
+        <section class="isbn-lookup">
+          <div>
+            <label for="isbnInput">Carica i dati tramite ISBN</label>
+            <p>Scrivi il codice riportato vicino al codice a barre del libro.</p>
+          </div>
+          <div class="isbn-controls">
+            <input id="isbnInput" name="isbn" inputmode="numeric" autocomplete="off" placeholder="Es. 9788806225315">
+            <button class="lookup-button" id="lookupIsbnButton" type="button">Cerca libro</button>
+          </div>
+          <p id="isbnStatus" class="isbn-status" role="status" aria-live="polite"></p>
+        </section>
+        <div class="form-grid">
+          <div class="placement-cover-field" aria-label="Copertina del libro">
+            <img id="placementCover" alt="">
+            <span id="placementCoverPlaceholder" aria-hidden="true">▥</span>
+          </div>
+          <label class="wide title-field">Titolo *
+            <input name="title" required autocomplete="off">
+          </label>
+          <label class="wide authors-field">Autore o autori
+            <input name="authors" placeholder="Es. Italo Calvino">
+          </label>
+          <label class="publisher-field">Editore
+            <input name="publisher">
+          </label>
+          <label>Anno di pubblicazione
+            <input name="publication_year" type="number" min="1" max="9999">
+          </label>
+          <label>Lingua
+            <input name="language" value="Italiano">
+          </label>
+          <div class="form-field location-field">
+            <label for="locationInput">Collocazione</label>
+            <span class="location-controls">
+              <input id="locationInput" name="location" placeholder="Es. Camera · Sinistra 1">
+              <button class="shelf-picker-button" id="openShelfPickerButton" type="button">Scegli scaffale</button>
+            </span>
+          </div>
+          <label class="status-field">Sistemazione
+            <input class="automatic-status" name="reading_status" value="Da sistemare" readonly>
+          </label>
+          <label class="loaned-to-field">Prestato a
+            <input name="loaned_to" placeholder="Lascia vuoto se è in casa">
+          </label>
+          <label>Tag
+            <input name="tags" placeholder="Es. narrativa, preferiti">
+          </label>
+          <label class="wide">URL copertina
+            <input name="cover_url" type="url" placeholder="https://…">
+          </label>
+          <label class="wide">Note
+            <textarea name="notes" rows="2"></textarea>
+          </label>
+        </div>
+
+        <section class="loan-manager" id="loanManager" hidden>
+          <div class="loan-manager-heading">
+            <div>
+              <p class="eyebrow">Prestiti</p>
+              <h3>Gestione prestito</h3>
+            </div>
+            <p id="loanStatus" class="loan-status" role="status"></p>
+          </div>
+
+          <div class="loan-current" id="currentLoanSection" hidden>
+            <p id="currentLoanText"></p>
+            <button class="secondary" id="returnBookButton" type="button">Segna restituito</button>
+          </div>
+
+          <div class="loan-new" id="newLoanSection">
+            <label>Prestato a
+              <input id="loanBorrower" autocomplete="off" placeholder="Nome della persona">
+            </label>
+            <label>Data del prestito
+              <input id="loanDate" type="date">
+            </label>
+            <button class="primary" id="lendBookButton" type="button">Registra prestito</button>
+          </div>
+
+          <details class="loan-history-details">
+            <summary>Storico prestiti</summary>
+            <div id="loanHistory" class="loan-history"></div>
+          </details>
+        </section>
+
+        <p id="formError" class="error" role="alert"></p>
+      </div>
+      <div class="dialog-actions">
+        <button class="danger ghost" id="deleteBookButton" type="button" hidden>Elimina</button>
+        <span class="spacer"></span>
+        <button class="secondary" id="cancelButton" type="button">Annulla</button>
+        <button class="primary" type="submit">Salva libro</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="bulkDialog" class="bulk-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Importazione multipla</p>
+        <h2>Carica più libri</h2>
+      </div>
+      <button class="icon-button" id="closeBulkButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="bulk-dialog-scroll">
+      <div class="bulk-entry-heading">
+        <button class="scanner-start-button" id="startScannerButton" type="button">Avvia fotocamera</button>
+      </div>
+
+      <section id="barcodeScanner" class="barcode-scanner" aria-label="Scanner di codici a barre" hidden>
+        <div class="scanner-preview">
+          <video id="barcodeVideo" autoplay muted playsinline></video>
+          <span class="scanner-guide" aria-hidden="true"></span>
+        </div>
+        <div class="scanner-controls">
+          <p id="scannerStatus" class="scanner-status" role="status" aria-live="polite">
+            Inquadra il codice a barre sul retro del libro.
+          </p>
+          <div class="scanner-camera-actions">
+            <button class="secondary" id="focusScannerButton" type="button" disabled>Metti a fuoco</button>
+            <button class="secondary" id="stopScannerButton" type="button">Termina scansione</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="bulk-input-title">
+        <label class="bulk-input-label" for="bulkIsbnInput">ISBN, uno per riga</label>
+        <span id="bulkEntryCount" class="bulk-entry-count">0 codici</span>
+      </div>
+      <textarea id="bulkIsbnInput" rows="5" placeholder="9780194227230&#10;9788806225315&#10;…"></textarea>
+
+      <div id="bulkProgress" class="bulk-progress" role="status" aria-live="polite"></div>
+      <ol id="bulkResults" class="bulk-results"></ol>
+    </div>
+
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button class="secondary" id="cancelBulkButton" type="button">Chiudi</button>
+      <button class="primary" id="startBulkButton" type="button">Importa libri</button>
+    </div>
+  </dialog>
+
+  <dialog id="settingsDialog" class="backup-dialog settings-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Archivio personale</p>
+        <h2>Impostazioni</h2>
+      </div>
+      <button class="icon-button" id="closeSettingsButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="backup-dialog-scroll">
+      <div class="backup-options">
+        <section>
+          <h3>Backup e ripristino</h3>
+          <p>Salva una copia completa del catalogo oppure ripristina un backup precedente.</p>
+          <div class="settings-card-actions">
+            <button class="primary" id="exportBackupButton" type="button">Scarica backup</button>
+            <input id="backupFileInput" type="file" accept=".json,application/json" hidden>
+            <button class="secondary" id="importBackupButton" type="button">Importa backup</button>
+          </div>
+        </section>
+        <section>
+          <h3>Installa applicazione</h3>
+          <p id="installAppStatus">Installa Libreria Casa sul dispositivo per aprirla come una normale app.</p>
+          <button class="secondary" id="installAppButton" type="button" disabled>Installazione non disponibile</button>
+        </section>
+        <section>
+          <h3>Copertine mancanti</h3>
+          <p id="coverRefreshSummary">Controlla gli ISBN dei libri senza copertina e prova a recuperarla dai cataloghi online.</p>
+          <button class="secondary" id="refreshMissingCoversButton" type="button">Cerca copertine</button>
+        </section>
+        <section class="danger-zone">
+          <h3>Elimina catalogo</h3>
+          <p id="deleteCatalogSummary">Elimina tutti i libri e lo storico dei prestiti. L’account e le impostazioni resteranno attivi.</p>
+          <button class="danger" id="showDeleteCatalogButton" type="button">Elimina tutti i libri</button>
+          <div class="delete-catalog-confirmation" id="deleteCatalogConfirmation" hidden>
+            <p><strong>Questa operazione è definitiva.</strong> Prima di continuare ti consigliamo di scaricare un backup.</p>
+            <label for="deleteCatalogPhrase">Scrivi <strong>ELIMINA TUTTO</strong> per confermare</label>
+            <input id="deleteCatalogPhrase" type="text" autocomplete="off" spellcheck="false">
+            <div class="settings-card-actions">
+              <button class="secondary" id="cancelDeleteCatalogButton" type="button">Annulla</button>
+              <button class="danger" id="deleteCatalogButton" type="button" disabled>Elimina definitivamente</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <p id="backupStatus" class="backup-status" role="status" aria-live="polite"></p>
+      <p id="deleteCatalogStatus" class="backup-status is-error" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button class="secondary" id="dismissSettingsButton" type="button">Chiudi</button>
+    </div>
+  </dialog>
+
+  <dialog id="coverReviewDialog" class="cover-review-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Copertine trovate</p>
+        <h2>Controlla le proposte</h2>
+      </div>
+      <button class="icon-button" id="closeCoverReviewButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="cover-review-scroll">
+      <p id="coverReviewSummary" class="cover-review-summary" role="status" aria-live="polite"></p>
+      <div id="coverReviewList" class="cover-review-list"></div>
+    </div>
+
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button class="secondary" id="cancelCoverReviewButton" type="button">Annulla</button>
+      <button class="primary" id="saveSelectedCoversButton" type="button">Salva copertine selezionate</button>
+    </div>
+  </dialog>
+
+  <dialog id="duplicateDialog" class="duplicate-dialog">
+    <div class="dialog-header">
+      <p class="eyebrow">Possibile doppione</p>
+      <button class="icon-button" id="closeDuplicateButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="duplicate-dialog-scroll">
+      <div class="duplicate-cover" aria-label="Copertina del libro">
+        <img id="duplicateCover" alt="" hidden>
+        <span id="duplicateCoverPlaceholder" aria-hidden="true">▥</span>
+      </div>
+      <h2>Questo libro è già presente</h2>
+      <p id="duplicateMessage"></p>
+      <p>Potrebbe essere un errore oppure un’altra copia fisica del volume.</p>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="secondary" id="rejectDuplicateButton" type="button">È un errore</button>
+      <span class="spacer"></span>
+      <button class="primary" id="acceptDuplicateButton" type="button">Aggiungi un’altra copia</button>
+    </div>
+  </dialog>
+
+  <dialog id="shelfDialog" class="shelf-dialog">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">Posizione nella libreria</p>
+        <h2>Scegli la posizione</h2>
+      </div>
+      <button class="icon-button" id="closeShelfButton" type="button" aria-label="Chiudi">×</button>
+    </div>
+
+    <section class="library-selector" aria-labelledby="librarySelectorTitle">
+      <p id="librarySelectorTitle">1. Scegli la libreria</p>
+      <div class="library-choice-buttons">
+        <button type="button" data-library="Camera">Camera</button>
+        <button type="button" data-library="Sgabuzzino">Sgabuzzino</button>
+        <button type="button" data-library="Ingresso">Ingresso</button>
+      </div>
+    </section>
+
+    <p id="shelfPendingMessage" class="shelf-pending" hidden></p>
+
+    <div id="shelfPickerBody" class="shelf-picker-body" hidden>
+      <div id="shelfMapContainer"></div>
+      <div class="shelf-picker-help">
+        <p><strong>2. Scegli lo scaffale.</strong><br>Clicca un vano: quello selezionato diventerà rosso.</p>
+        <ul id="shelfLegend"></ul>
+        <p id="shelfSelectionText" class="shelf-selection" aria-live="polite">Nessuno scaffale selezionato</p>
+      </div>
+    </div>
+
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button class="secondary" id="cancelShelfButton" type="button">Annulla</button>
+      <button class="primary" id="applyShelfButton" type="button" disabled>Usa questa posizione</button>
+    </div>
+  </dialog>
+
+  <template id="bookCardTemplate">
+    <article class="book-card">
+      <button class="card-button" type="button">
+        <div class="cover">
+          <img alt="" loading="lazy" decoding="async" fetchpriority="low" hidden>
+          <span class="cover-placeholder" aria-hidden="true">▥</span>
+        </div>
+        <div class="book-info">
+          <div class="book-badges"></div>
+          <h2 class="book-title"></h2>
+          <p class="book-author"></p>
+          <p class="book-location"></p>
+        </div>
+      </button>
+    </article>
+  </template>
+
+  <script src="config.js"></script>
+  <script type="module" src="app.js?v=20260721-sort1"></script>
+</body>
+</html>
