@@ -1,4 +1,4 @@
-const CACHE_NAME = "libreria-casa-v16";
+const CACHE_NAME = "libreria-casa-v17";
 const APP_SHELL = [
   "./",
   "./index.html",
