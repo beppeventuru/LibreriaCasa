@@ -119,7 +119,10 @@ async function lookupIbs(isbn: string): Promise<BookMetadata | null> {
   const title = jsonValue(record, "item_name");
   if (!title) return null;
 
-  const coverUrl = html.match(new RegExp(`https://www\\.ibs\\.it/images/${escapedIsbn}_[^"'<>\\s]+`))?.[0] || "";
+  const foundCoverUrl = html.match(new RegExp(`https://www\\.ibs\\.it/images/${escapedIsbn}_[^"'<>\\s]+`))?.[0] || "";
+  // IBS usa talvolta un'immagine generica con la scritta "Copertina in arrivo".
+  // Non la salviamo come se fosse la copertina del volume.
+  const coverUrl = isIbsPlaceholderCover(html, record, foundCoverUrl) ? "" : foundCoverUrl;
   const publicationYear = jsonValue(record, "year_edition").match(/\\d{4}/)?.[0] || null;
 
   return {
@@ -136,6 +139,23 @@ async function lookupIbs(isbn: string): Promise<BookMetadata | null> {
     notes: "",
     cover_url: coverUrl
   };
+}
+
+function isIbsPlaceholderCover(html: string, record: string, coverUrl: string) {
+  if (!coverUrl) return true;
+
+  const placeholder = /copertina\s*(?:in)?\s*arrivo|cover\s*coming\s*soon|immagine\s*non\s*disponibile|placeholder|no[-_\s]?(?:image|cover)/i;
+  const decodedUrl = coverUrl.replace(/&amp;/g, "&");
+  if (placeholder.test(decodedUrl) || placeholder.test(record)) return true;
+
+  // L'avviso di IBS, quando presente, è normalmente nell'elemento HTML vicino
+  // all'URL dell'immagine (alt, title o attributi data-*).
+  const position = html.indexOf(coverUrl);
+  const nearbyMarkup = position >= 0
+    ? html.slice(Math.max(0, position - 700), position + coverUrl.length + 1200)
+    : "";
+
+  return placeholder.test(nearbyMarkup);
 }
 
 function jsonValue(text: string, key: string) {
