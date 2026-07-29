@@ -28,6 +28,7 @@ const searchField = document.querySelector("#searchField");
 const sortField = document.querySelector("#sortField");
 const sortDirectionButton = document.querySelector("#sortDirectionButton");
 const quickFilterButtons = [...document.querySelectorAll("[data-quick-filter]")];
+const alphabetFilter = document.querySelector("#alphabetFilter");
 const dialog = document.querySelector("#bookDialog");
 const form = document.querySelector("#bookForm");
 const formSubmitButton = form.querySelector('button[type="submit"]');
@@ -155,6 +156,7 @@ let books = [];
 let searchTimer;
 let activeQuickFilter = "all";
 let sortAscending = true;
+let activeAlphabetLetter = "all";
 let bulkRunning = false;
 let backupRunning = false;
 let coverRefreshRunning = false;
@@ -275,6 +277,60 @@ function renderQuickFilters() {
     : "Tutto sistemato";
 }
 
+const alphabetLetters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "#"];
+
+function alphabetFilterField() {
+  return ["title", "authors"].includes(sortField.value) ? sortField.value : "";
+}
+
+function alphabetInitial(value) {
+  const initial = String(value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .charAt(0)
+    .toLocaleUpperCase("it");
+  return /^[A-Z]$/.test(initial) ? initial : "#";
+}
+
+function bookAlphabetInitial(book, field = alphabetFilterField()) {
+  if (field === "authors") return alphabetInitial(authorSortKey(book.authors));
+  return alphabetInitial(book.title);
+}
+
+function matchesAlphabetFilter(book) {
+  const field = alphabetFilterField();
+  return !field || activeAlphabetLetter === "all"
+    || bookAlphabetInitial(book, field) === activeAlphabetLetter;
+}
+
+function renderAlphabetFilter() {
+  const field = alphabetFilterField();
+  alphabetFilter.hidden = !field;
+  if (!field) return;
+
+  const availableLetters = new Set(catalogBooks.map((book) => bookAlphabetInitial(book, field)));
+  alphabetFilter.replaceChildren(
+    createAlphabetButton("Tutti", "all", activeAlphabetLetter === "all", true),
+    ...alphabetLetters.map((letter) => createAlphabetButton(
+      letter,
+      letter,
+      activeAlphabetLetter === letter,
+      availableLetters.has(letter)
+    ))
+  );
+}
+
+function createAlphabetButton(label, letter, selected, available) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.dataset.alphabetLetter = letter;
+  button.setAttribute("aria-pressed", String(selected));
+  button.disabled = !available;
+  return button;
+}
+
 function compareBooks(left, right) {
   const field = sortField.value;
   if (field === "created_at") {
@@ -349,9 +405,11 @@ function applyCatalogView(query = searchInput.value, field = searchField.value) 
   const searchedBooks = filterBooks(catalogBooks, query, field);
   books = searchedBooks
     .filter((book) => matchesQuickFilter(book))
+    .filter((book) => matchesAlphabetFilter(book))
     .sort(compareBooks);
   updateSortDirection();
   renderQuickFilters();
+  renderAlphabetFilter();
   renderBooks();
 }
 
@@ -1890,6 +1948,7 @@ searchField.addEventListener("change", () => {
 
 sortField.addEventListener("change", () => {
   if (sortField.value === "created_at") sortAscending = false;
+  activeAlphabetLetter = "all";
   applyCatalogView();
 });
 sortDirectionButton.addEventListener("click", () => {
@@ -1902,6 +1961,13 @@ quickFilterButtons.forEach((button) => {
     activeQuickFilter = button.dataset.quickFilter;
     applyCatalogView();
   });
+});
+
+alphabetFilter.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-alphabet-letter]");
+  if (!button || button.disabled) return;
+  activeAlphabetLetter = button.dataset.alphabetLetter;
+  applyCatalogView();
 });
 
 authForm.addEventListener("submit", async (event) => {
